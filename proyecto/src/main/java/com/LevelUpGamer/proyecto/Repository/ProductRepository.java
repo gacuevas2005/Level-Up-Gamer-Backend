@@ -1,0 +1,14 @@
+package com.LevelUpGamer.proyecto.Repository;
+import com.LevelUpGamer.proyecto.model.Product;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ProductRepository extends JpaRepository<Product, Long> {
+    // Con solo extender JpaRepository, ya tenemos:
+    // - findAll() (Obtener todos)
+    // - findById(Long id) (Obtener uno por ID)
+    // - save(Product product) (Crear o Actualizar)
+    // - deleteById(Long id) (Borrar)
+    // ...y muchos más!
+}

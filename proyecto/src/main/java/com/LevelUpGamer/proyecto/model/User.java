@@ -34,47 +34,39 @@ public class User implements UserDetails {
 
     private LocalDate dateOfBirth;
 
-    // --- 3. IMPLEMENTACIÓN DE LOS MÉTODOS DE UserDetails ---
-    // (Spring usará estos métodos para el proceso de autenticación)
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Por ahora, todos nuestros usuarios tendrán un rol simple: "USER"
-        // Esto es necesario para la autenticación.
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override
     public String getPassword() {
-        // Le dice a Spring cuál es el campo de la contraseña (hasheada)
         return this.password;
     }
 
     @Override
     public String getUsername() {
-        // Le dice a Spring cuál es el campo del nombre de usuario
         return this.username;
     }
 
-    // --- Métodos que no necesitamos ahora, pero son requeridos ---
 
     @Override
     public boolean isAccountNonExpired() {
-        return true; // Asumimos que las cuentas nunca expiran
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true; // Asumimos que las cuentas nunca se bloquean
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // Asumimos que las credenciales nunca expiran
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return true; // Asumimos que todos los usuarios están habilitados
+        return true;
     }
 }

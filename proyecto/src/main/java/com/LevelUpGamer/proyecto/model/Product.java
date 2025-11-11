@@ -4,40 +4,33 @@ import lombok.Data; // Lombok para ahorrarnos getters/setters
 import java.util.List;
 import java.util.ArrayList;
 
-@Data // <-- Anotación de Lombok: genera getters, setters, toString, etc.
-@Entity // <-- Le dice a JPA que esta clase es una tabla en la BD
-@Table(name = "products") // Nombre de la tabla en MySQL
+@Data
+@Entity
+@Table(name = "products")
 public class Product {
 
-    @Id // Marca esto como la llave primaria
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // ID Autoincrementable
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false) // No puede ser nulo
-    private String name; // Nombre
+    @Column(nullable = false)
+    private String name;
 
     @Column(nullable = false)
-    private Double price; // Precio
+    private Double price;
 
-    private String category; // Categoría
+    private String category;
 
-    @Column(name = "image_url") // Nombre de la columna en la BD
-    private String imageUrl; // URL de la imagen
+    @Column(name = "image_url")
+    private String imageUrl;
 
-    @Column(columnDefinition = "TEXT") // Para descripciones largas
-    private String description; // Descripción
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
-    private String manufacturer; // Manofactura
+    private String manufacturer;
 
-    private String distributor; // Distribuidor
+    private String distributor;
 
-    /*
-     * RELACIÓN: Un Producto (Product) puede tener muchas Reseñas (Review).
-     * - 'mappedBy="product"': Le dice a JPA que la entidad 'Review' maneja
-     * la relación (ahí estará el @ManyToOne).
-     * - 'cascade=CascadeType.ALL': Si borramos un producto, se borran sus reseñas.
-     * - 'fetch=FetchType.LAZY': No cargues las reseñas a menos que las pidamos.
-     */
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Review> reviews = new ArrayList<>();
 }

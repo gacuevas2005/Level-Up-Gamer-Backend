@@ -5,6 +5,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
-    // Esto es todo lo que necesitas.
-    // Spring Data JPA se encarga del resto.
+
 }

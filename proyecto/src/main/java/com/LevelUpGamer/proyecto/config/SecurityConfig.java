@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager; // Importa
 import org.springframework.security.authentication.AuthenticationProvider; // Importa
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider; // Importa
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration; // Importa
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -23,7 +24,6 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // --- ¡Necesitamos el UserRepository aquí! ---
     @Autowired
     private UserRepository userRepository;
 
@@ -77,13 +77,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(request -> {
-                    CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
-                    config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
-                    config.setAllowedHeaders(Arrays.asList("*"));
-                    return config;
-                }))
+                .cors(Customizer.withDefaults())
 
                 // ¡NUEVO! Le decimos que no maneje sesiones (somos 'STATELESS')
                 .sessionManagement(session -> session
@@ -95,8 +89,8 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(authz -> authz
                                 .requestMatchers("/api/products/**").permitAll()
-                                .requestMatchers("/api/auth/**").permitAll() // /api/auth/register Y /api/auth/login son públicos
-                        // .anyRequest().authenticated() // (Descomenta esto después para proteger otras rutas)
+                                .requestMatchers("/api/auth/**").permitAll()
+                        // .anyRequest().authenticated()
                 );
 
         return http.build();

@@ -14,18 +14,17 @@ import com.LevelUpGamer.proyecto.service.JwtService;
 import org.springframework.security.authentication.AuthenticationManager; // Importa el AuthManager
 
 @RestController
-@RequestMapping("/api/auth") // Ruta base para autenticación (registro, login, etc.)
+@RequestMapping("/api/auth")
 public class AuthController {
 
     @Autowired
     private UserRepository userRepository;
 
-    // Inyectamos el "hasheador" de contraseñas que creamos en SecurityConfig
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private AuthenticationManager authenticationManager; // El "verificador"
+    private AuthenticationManager authenticationManager;
 
     @Autowired
     private JwtService jwtService;
@@ -39,30 +38,22 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody User newUser) {
 
-        // 1. Comprobar si el nombre de usuario ya existe
         if (userRepository.findByUsername(newUser.getUsername()).isPresent()) {
-            // Mensaje en español para el frontend
             return ResponseEntity
                     .badRequest()
                     .body("Error: ¡El nombre de usuario ya está en uso!");
         }
 
-        // 2. Comprobar si el email ya existe
         if (userRepository.findByEmail(newUser.getEmail()).isPresent()) {
             return ResponseEntity
                     .badRequest()
                     .body("Error: ¡El email ya está en uso!");
         }
 
-        // 3. ¡HASHEAR la contraseña!
-        // Tomamos la contraseña de texto plano (newUser.getPassword())
-        // y la reemplazamos por su versión hasheada.
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
 
-        // 4. Guardar el usuario en la base de datos
         userRepository.save(newUser);
 
-        // Devolvemos una respuesta 200 OK
         return ResponseEntity.ok("¡Usuario registrado exitosamente!");
     }
     /**
@@ -74,10 +65,6 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
 
-        // 1. Autenticar al usuario
-        // Esto usa el 'AuthenticationProvider' que definiremos en SecurityConfig.
-        // Automáticamente comprueba si el usuario existe y si el hash de la
-        // contraseña es correcto. Si no, lanza una excepción.
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsername(),
@@ -85,13 +72,10 @@ public class AuthController {
                 )
         );
 
-        // 2. Si la autenticación fue exitosa, obtenemos los detalles del usuario
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
-        // 3. Generamos el token JWT
         String token = jwtService.generateToken(userDetails);
 
-        // 4. Devolvemos el token en la respuesta
         return ResponseEntity.ok(new AuthResponse(token));
     }
 }

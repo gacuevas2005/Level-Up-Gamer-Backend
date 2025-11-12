@@ -1,22 +1,18 @@
 package com.LevelUpGamer.proyecto.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDate; // Para la fecha de nacimiento
-import jakarta.persistence.*;
-import lombok.Data;
-// 1. IMPORTA las clases de Spring Security
+import java.time.LocalDate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
-import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Collections;
 
 @Data
 @Entity
 @Table(name = "users")
-// 2. IMPLEMENTA la interfaz UserDetails
 public class User implements UserDetails {
 
     @Id
@@ -33,6 +29,16 @@ public class User implements UserDetails {
     private String password;
 
     private LocalDate dateOfBirth;
+
+    // --- ¡NUEVA RELACIÓN! ---
+    // Un usuario tiene Un carrito.
+    // mappedBy="user": Le dice a JPA que la clave foránea (la columna user_id)
+    //                  está definida en el campo "user" del modelo Cart.
+    // cascade=ALL: Si borro un usuario, también se borra su carrito.
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore // Evita bucles al convertir a JSON
+    private Cart cart;
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

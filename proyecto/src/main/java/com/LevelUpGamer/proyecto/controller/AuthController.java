@@ -1,4 +1,8 @@
 package com.LevelUpGamer.proyecto.controller;
+
+import com.LevelUpGamer.proyecto.model.Cart;
+import com.LevelUpGamer.proyecto.Repository.CartRepository;
+
 import com.LevelUpGamer.proyecto.model.User;
 import com.LevelUpGamer.proyecto.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,10 +12,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import com.LevelUpGamer.proyecto.dto.AuthResponse; // Importa los DTOs
+import com.LevelUpGamer.proyecto.dto.AuthResponse;
 import com.LevelUpGamer.proyecto.dto.LoginRequest;
 import com.LevelUpGamer.proyecto.service.JwtService;
-import org.springframework.security.authentication.AuthenticationManager; // Importa el AuthManager
+import org.springframework.security.authentication.AuthenticationManager;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -29,11 +33,13 @@ public class AuthController {
     @Autowired
     private JwtService jwtService;
 
+    // ¡NUEVA INYECCIÓN! Necesitamos el repo de carritos
+    @Autowired
+    private CartRepository cartRepository;
+
     /**
      * Endpoint para registrar un nuevo usuario.
-     * Petición: POST http://localhost:8081/api/auth/register
-     * @param newUser El JSON del usuario a crear (viene del body)
-     * @return Una respuesta de éxito o error.
+     * ¡MODIFICADO!
      */
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody User newUser) {
@@ -52,15 +58,24 @@ public class AuthController {
 
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
 
-        userRepository.save(newUser);
+        // --- ¡NUEVA LÓGICA! ---
+
+        // 1. Guarda el usuario
+        User savedUser = userRepository.save(newUser);
+
+        // 2. ¡Crea un carrito vacío para este nuevo usuario!
+        Cart newCart = new Cart();
+        newCart.setUser(savedUser); // Asocia el carrito al usuario que acabamos de guardar
+        cartRepository.save(newCart); // Guarda el nuevo carrito en la BD
+
+        // --- FIN DE LA NUEVA LÓGICA ---
 
         return ResponseEntity.ok("¡Usuario registrado exitosamente!");
     }
+
     /**
      * Endpoint para iniciar sesión.
-     * Petición: POST http://localhost:8081/api/auth/login
-     * @param loginRequest El JSON con "username" y "password"
-     * @return Un JSON con el "token"
+     * (Sin cambios)
      */
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {

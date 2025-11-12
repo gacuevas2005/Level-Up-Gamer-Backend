@@ -1,96 +1,72 @@
 package com.LevelUpGamer.proyecto.config;
-import com.LevelUpGamer.proyecto.Repository.UserRepository;// Importa el UserRepository
-import org.springframework.beans.factory.annotation.Autowired; // Importa Autowired
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager; // Importa
-import org.springframework.security.authentication.AuthenticationProvider; // Importa
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider; // Importa
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration; // Importa
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy; // Importa
-import org.springframework.security.core.userdetails.UserDetailsService; // Importa
-import org.springframework.security.core.userdetails.UsernameNotFoundException; // Importa
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService; // Se mantiene
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
-
-import java.util.Arrays;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    // Se inyecta el filtro JWT
     @Autowired
-    private UserRepository userRepository;
+    private JwtAuthFilter jwtAuthFilter;
+
+    @Autowired
+    private UserDetailsService userDetailsService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * ¡NUEVO!
-     * Le dice a Spring Security CÓMO buscar a un usuario.
-     * Cuando 'AuthenticationManager' lo necesite, llamará a esto.
-     */
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
-    }
-
-    /**
-     * ¡NUEVO!
-     * El "proveedor" que conecta UserDetailsService y PasswordEncoder.
-     * Le dice al manager: "Usa este servicio para encontrar usuarios
-     * y este encriptador para comprobar las contraseñas".
-     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService());
+
+        // Ahora usa el servicio que inyectamos arriba.
+        authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
 
-    /**
-     * ¡NUEVO!
-     * El "Gerente" que nuestro AuthController usará para autenticar.
-     * Lo exponemos como un Bean.
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-
-    /**
-     * ¡MODIFICADO!
-     * Ahora le decimos a Spring que use nuestro 'AuthenticationProvider'
-     * y que NO use sesiones (porque usaremos tokens).
-     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults())
-
-                // ¡NUEVO! Le decimos que no maneje sesiones (somos 'STATELESS')
+                .cors(Customizer.withDefaults()) // Usa la WebConfig global
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Sin sesiones
                 )
-
-                // ¡NUEVO! Le decimos qué proveedor de autenticación usar
-                .authenticationProvider(authenticationProvider())
-
+                .authenticationProvider(authenticationProvider()) // Usa nuestro proveedor
+                // Añade nuestro filtro JWT antes del filtro de username/password
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(authz -> authz
-                                .requestMatchers("/api/products/**").permitAll()
-                                .requestMatchers("/api/auth/**").permitAll()
-                        // .anyRequest().authenticated()
+                        // Rutas públicas
+                        .requestMatchers("/api/products/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        // Rutas privadas (requieren token)
+                        .requestMatchers("/api/cart/**").authenticated()
+                        // Cualquier otra ruta, también protegida
+                        .anyRequest().authenticated()
                 );
 
         return http.build();

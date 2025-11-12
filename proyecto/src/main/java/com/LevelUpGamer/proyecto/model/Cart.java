@@ -1,6 +1,7 @@
 package com.LevelUpGamer.proyecto.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty; // <-- ¡NUEVA IMPORTACIÓN!
 import jakarta.persistence.*;
 import lombok.Data;
 import java.util.List;
@@ -20,7 +21,13 @@ public class Cart {
     @JsonIgnore
     private User user;
 
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(
+            mappedBy = "cart",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.EAGER,
+            orphanRemoval = true // <-- ¡AÑADE ESTA LÍNEA!
+    )
+    @JsonProperty("items")
     private List<CartItem> cartItems = new ArrayList<>();
 
 
@@ -31,6 +38,7 @@ public class Cart {
      * y añadirá un campo "totalPrice" al JSON que se envía al frontend.
      * @return El precio total calculado de todos los items en el carrito.
      */
+    @JsonProperty("total") // <-- ¡CAMBIO AQUÍ!
     public Double getTotalPrice() {
         if (this.cartItems == null || this.cartItems.isEmpty()) {
             return 0.0;

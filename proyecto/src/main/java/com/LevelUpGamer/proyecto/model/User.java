@@ -30,6 +30,8 @@ public class User implements UserDetails {
 
     private LocalDate dateOfBirth;
 
+    private boolean receiveNotifications; // Para el botón "Quiero recibir notificaciones"
+
     // --- ¡NUEVA RELACIÓN! ---
     // Un usuario tiene Un carrito.
     // mappedBy="user": Le dice a JPA que la clave foránea (la columna user_id)

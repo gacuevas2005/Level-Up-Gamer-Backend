@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -52,23 +53,29 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults()) // Usa la WebConfig global
+                .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Sin sesiones
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .authenticationProvider(authenticationProvider()) // Usa nuestro proveedor
-                // Añade nuestro filtro JWT antes del filtro de username/password
+                .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+
+                // --- ¡AQUÍ ESTÁ EL CAMBIO! ---
                 .authorizeHttpRequests(authz -> authz
-                        // Rutas públicas
-                        .requestMatchers("/api/products/**").permitAll()
+                        // 1. PERMITE ver productos y el catálogo (GET) sin login
+                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
+
+                        // 2. PERMITE el login y registro
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Rutas privadas (requieren token)
-                        .requestMatchers("/api/cart/**").authenticated()
-                        // Cualquier otra ruta, también protegida
+
+                        // 3. REQUIERE LOGIN (authenticated) para CUALQUIER OTRA PETICIÓN
+                        // (Esto ahora protegerá POST, PUT, DELETE a /api/products,
+                        // incluyendo nuestro POST a /api/products/{id}/reviews)
                         .anyRequest().authenticated()
                 );
+        // --- FIN DEL CAMBIO ---
 
         return http.build();
     }
+
 }

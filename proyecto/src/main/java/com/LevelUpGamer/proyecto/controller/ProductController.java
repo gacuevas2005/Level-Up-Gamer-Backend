@@ -6,6 +6,8 @@ import com.LevelUpGamer.proyecto.Repository.ReviewRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.context.SecurityContextHolder; // <-- AÑADE ESTE IMPORT
+import org.springframework.security.core.Authentication; // <-- AÑADE ESTE IMPORT
 
 import java.util.List;
 import java.util.Optional;
@@ -71,35 +73,46 @@ public class ProductController {
         return productRepository.save(newProduct);
     }
 
+
+
+
     /**
-     * 4. AÑADIR UNA NUEVA RESEÑA a un producto específico.
-     * Petición: POST http://localhost:8081/api/products/1/reviews
-     * @param productId El ID del producto (viene de la URL)
-     * @param newReview El JSON de la reseña (viene del Body)
-     * @return La reseña guardada o un error 404 si el producto no existe.
+     * 4. AÑADIR UNA NUEVA RESEÑA (Versión Segura)
+     *  Petición: POST http://localhost:8081/api/products/1/reviews
+     * Petición: POST /api/products/1/reviews (AHORA REQUIERE TOKEN)
      */
     @PostMapping("/{productId}/reviews")
     public ResponseEntity<Review> addReviewToProduct(
             @PathVariable Long productId,
-            @RequestBody Review newReview) {
+            @RequestBody Review newReview) { // El 'newReview' del frontend NO traerá 'author'
 
-        // Paso A: Busca el producto al que pertenece esta reseña
+        // --- ¡AQUÍ ESTÁ LA MAGIA! ---
+        // 1. Obtenemos la autenticación (gracias al JwtAuthFilter)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        // 2. Obtenemos el username (ej: "GamerPro")
+        String currentUsername = authentication.getName();
+
+        // 3. ¡Establecemos el autor en la reseña!
+        // Ignoramos lo que sea que venga en newReview.setAuthor()
+        newReview.setAuthor(currentUsername);
+        // --- FIN DE LA MAGIA ---
+
+        // Paso A: Busca el producto (esto no cambia)
         Optional<Product> productOptional = productRepository.findById(productId);
 
-        // Paso B: Comprueba si el producto existe
         if (productOptional.isEmpty()) {
-            // Si no se encuentra el producto, devuelve un 404 Not Found
             System.out.println("Error: No se encontró el producto con id " + productId);
             return ResponseEntity.notFound().build();
         }
 
-        // Paso C: ¡Enlaza la reseña con el producto!
+        // Paso C: Enlaza la reseña con el producto (esto no cambia)
         newReview.setProduct(productOptional.get());
 
-        // Paso D: Guarda la NUEVA reseña en su propia tabla (ReviewRepository)
+        // Paso D: Guarda la reseña (ahora con el autor correcto)
         Review savedReview = reviewRepository.save(newReview);
 
-        System.out.println("Reseña guardada para el producto: " + productOptional.get().getName());
-        return ResponseEntity.ok(savedReview); // Devuelve 200 OK con la reseña creada
+        System.out.println("Reseña guardada por '" + currentUsername + "' para el producto: " + productOptional.get().getName());
+        return ResponseEntity.ok(savedReview);
     }
 }

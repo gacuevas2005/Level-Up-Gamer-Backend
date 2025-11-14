@@ -8,7 +8,8 @@ public class ProfileResponse {
     private Long id;
     private String username;
     private String email;
-    private boolean receiveNotifications; // El campo que querías
+    private boolean receiveNotifications;
+    private String profilePictureUrl;
 
     // Creamos un constructor que "mapea"
     // un User a un ProfileResponse, quitando la data sensible.
@@ -17,5 +18,6 @@ public class ProfileResponse {
         this.username = user.getUsername();
         this.email = user.getEmail();
         this.receiveNotifications = user.isReceiveNotifications();
+        this.profilePictureUrl = user.getProfilePictureUrl();
     }
 }

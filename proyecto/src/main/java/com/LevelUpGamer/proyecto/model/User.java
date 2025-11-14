@@ -30,7 +30,9 @@ public class User implements UserDetails {
 
     private LocalDate dateOfBirth;
 
-    private boolean receiveNotifications; // Para el botón "Quiero recibir notificaciones"
+    private boolean receiveNotifications;
+
+    private String profilePictureUrl;// Para el botón "Quiero recibir notificaciones"
 
     // --- ¡NUEVA RELACIÓN! ---
     // Un usuario tiene Un carrito.

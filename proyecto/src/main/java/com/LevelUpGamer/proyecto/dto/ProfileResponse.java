@@ -10,6 +10,9 @@ public class ProfileResponse {
     private String email;
     private boolean receiveNotifications;
     private String profilePictureUrl;
+    private String userRole;
+    private int pointsBalance;
+    private int userLevel;
 
     // Creamos un constructor que "mapea"
     // un User a un ProfileResponse, quitando la data sensible.
@@ -19,5 +22,8 @@ public class ProfileResponse {
         this.email = user.getEmail();
         this.receiveNotifications = user.isReceiveNotifications();
         this.profilePictureUrl = user.getProfilePictureUrl();
+        this.userRole = user.getUserRole();
+        this.pointsBalance = user.getPointsBalance();
+        this.userLevel = user.getUserLevel();
     }
 }

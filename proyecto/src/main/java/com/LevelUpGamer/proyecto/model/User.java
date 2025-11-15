@@ -34,6 +34,15 @@ public class User implements UserDetails {
 
     private String profilePictureUrl;// Para el botón "Quiero recibir notificaciones"
 
+    @Column(nullable = false)
+    private String userRole;
+
+
+    private int pointsBalance;
+
+
+    private int userLevel;
+
     // --- ¡NUEVA RELACIÓN! ---
     // Un usuario tiene Un carrito.
     // mappedBy="user": Le dice a JPA que la clave foránea (la columna user_id)

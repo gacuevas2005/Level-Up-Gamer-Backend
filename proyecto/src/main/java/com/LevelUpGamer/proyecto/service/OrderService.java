@@ -53,10 +53,11 @@ public class OrderService {
             // Calcula puntos (¡TU FÓRMULA!)
             pointsEarned = (int) (Math.floor(finalPrice / 1000) * 10);
 
-            // Actualiza el saldo de puntos del usuario
             user.setPointsBalance(user.getPointsBalance() + pointsEarned);
+            // Añade puntos al "historial" (para nivel)
+            user.setTotalPointsEarned(user.getTotalPointsEarned() + pointsEarned); // <-- ¡AÑADE ESTO!
 
-            // Actualiza el nivel del usuario
+            // Actualiza el nivel (ahora usará el total)
             updateUserLevel(user);
         }
 
@@ -100,7 +101,7 @@ public class OrderService {
      * Nivel 4: 10000+
      */
     private void updateUserLevel(User user) {
-        int points = user.getPointsBalance();
+        int points = user.getTotalPointsEarned();
 
         if (points >= 150000) {
             user.setUserLevel(4);

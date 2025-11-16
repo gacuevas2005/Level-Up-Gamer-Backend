@@ -43,6 +43,9 @@ public class User implements UserDetails {
 
     private int userLevel;
 
+    @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
+    private int totalPointsEarned; // Puntos TOTALES (para nivel)
+
     // --- ¡NUEVA RELACIÓN! ---
     // Un usuario tiene Un carrito.
     // mappedBy="user": Le dice a JPA que la clave foránea (la columna user_id)

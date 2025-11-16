@@ -64,6 +64,7 @@ public class AuthController {
 
         // 2. Inicializa los puntos y el nivel
         newUser.setPointsBalance(0);
+        newUser.setTotalPointsEarned(0);
         newUser.setUserLevel(1);
 
 

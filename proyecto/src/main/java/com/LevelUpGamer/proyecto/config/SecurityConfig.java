@@ -3,6 +3,7 @@ package com.LevelUpGamer.proyecto.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod; // <-- Import correcto
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -10,7 +11,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService; // Se mantiene
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -37,7 +38,7 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
 
-        // Ahora usa el servicio que inyectamos arriba.
+        // Usa el servicio inyectado
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
@@ -52,22 +53,29 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults()) // Usa la WebConfig global
+                .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Sin sesiones
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // No usa sesiones
                 )
-                .authenticationProvider(authenticationProvider()) // Usa nuestro proveedor
-                // Añade nuestro filtro JWT antes del filtro de username/password
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class) // Añade el "guardia"
+
+                // --- Configuración de Permisos (Corregida) ---
                 .authorizeHttpRequests(authz -> authz
-                        // Rutas públicas
-                        .requestMatchers("/api/products/**").permitAll()
+
+                        // 1. Permite ver productos (Solo GET)
+                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
+
+                        // 2. Permite Login y Registro
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Rutas privadas (requieren token)
-                        .requestMatchers("/api/cart/**").authenticated()
-                        // Cualquier otra ruta, también protegida
+
+                        // 3. ¡LA LÍNEA CLAVE! Permite ver las imágenes subidas
+                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+
+                        // 4. Todo lo demás (subir reseñas, ver perfil, etc.) requiere login
                         .anyRequest().authenticated()
                 );
+        // --- Fin de la Configuración ---
 
         return http.build();
     }

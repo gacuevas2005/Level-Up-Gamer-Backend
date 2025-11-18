@@ -1,61 +1,71 @@
 package com.LevelUpGamer.proyecto.controller;
 
+// DTOs (Cajas de datos)
 import com.LevelUpGamer.proyecto.dto.ChangePasswordRequest;
 import com.LevelUpGamer.proyecto.dto.ProfileResponse;
+// Modelo y Repositorio
 import com.LevelUpGamer.proyecto.model.User;
 import com.LevelUpGamer.proyecto.Repository.UserRepository;
+// Servicios
+import com.LevelUpGamer.proyecto.service.FileStorageService;
+// Utilidad para la extensión del archivo
+import org.apache.commons.io.FilenameUtils;
+// Imports de Spring
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+// Imports de Java
+import java.io.IOException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/profile") // ¡Esta ruta está protegida por SecurityConfig!
+@RequestMapping("/api/profile") // Todas las rutas aquí están protegidas
 public class ProfileController {
+
+    // --- Inyección de Dependencias ---
 
     @Autowired
     private UserRepository userRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder; // Para el cambio de clave
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private FileStorageService fileStorageService; // El servicio para guardar archivos
+
+    // --- Endpoints ---
 
     /**
      * OBTENER el perfil del usuario actualmente logueado.
-     * El "guardia" (JwtAuthFilter) ya validó el token.
      * Petición: GET /api/profile/me
      */
     @GetMapping("/me")
     public ResponseEntity<ProfileResponse> getMyProfile() {
-        // Obtenemos el "username" que el filtro JWT puso en el contexto
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado (esto no debería pasar)"));
-
-        // Devolvemos el DTO, no la entidad (por seguridad)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         return ResponseEntity.ok(new ProfileResponse(user));
     }
 
     /**
-     * ACTUALIZAR el perfil (username, email, notificaciones).
+     * ACTUALIZAR la información del perfil (username, email, notificaciones).
      * Petición: PUT /api/profile/me
      */
     @PutMapping("/me")
     public ResponseEntity<?> updateMyProfile(@RequestBody Map<String, Object> updates) {
 
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByUsername(username).get();
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // 1. Validar y actualizar campos
-        // (Usamos un Map para que el frontend pueda enviar solo lo que cambió)
-
+        // Validar y actualizar campos de texto
         if (updates.containsKey("username")) {
             String newUsername = updates.get("username").toString();
-            // Comprobamos que el nuevo username no esté ya en uso por OTRA persona
             if (userRepository.findByUsername(newUsername).isPresent() && !currentUser.getUsername().equals(newUsername)) {
                 return ResponseEntity.badRequest().body("Error: El nombre de usuario ya está en uso.");
             }
@@ -74,11 +84,44 @@ public class ProfileController {
             currentUser.setReceiveNotifications((Boolean) updates.get("receiveNotifications"));
         }
 
-        // 2. Guardar los cambios en la BD
+        // Guardar los cambios en la BD
         User updatedUser = userRepository.save(currentUser);
-
-        // 3. Devolver el perfil actualizado
         return ResponseEntity.ok(new ProfileResponse(updatedUser));
+    }
+
+    /**
+     * Sube o actualiza la FOTO de perfil del usuario logueado.
+     * Petición: POST /api/profile/picture
+     */
+    @PostMapping("/picture")
+    public ResponseEntity<?> uploadProfilePicture(@RequestParam("file") MultipartFile file) {
+
+        // 1. Obtener el usuario actual
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        try {
+            // 2. Generar un nombre de archivo único (ej: user_1_avatar.png)
+            String extension = FilenameUtils.getExtension(file.getOriginalFilename());
+            String newFilename = "user_" + currentUser.getId() + "_avatar." + extension;
+
+            // 3. Guardar el archivo en el disco (en la carpeta 'uploads')
+            fileStorageService.store(file, newFilename);
+
+            // 4. --- ¡LA CORRECCIÓN CRÍTICA! ---
+            // Guardar la RUTA PÚBLICA ABSOLUTA en la BD
+            String publicPath = "http://localhost:8081/uploads/" + newFilename;
+            currentUser.setProfilePictureUrl(publicPath);
+            userRepository.save(currentUser);
+
+            // 5. Devolver la nueva ruta al frontend
+            return ResponseEntity.ok(Map.of("profilePictureUrl", publicPath));
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Error al subir el archivo: " + e.getMessage());
+        }
     }
 
     /**
@@ -89,7 +132,8 @@ public class ProfileController {
     public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
 
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByUsername(username).get();
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         // 1. Verificar que la contraseña antigua es correcta
         if (!passwordEncoder.matches(request.getOldPassword(), currentUser.getPassword())) {
@@ -97,7 +141,7 @@ public class ProfileController {
         }
 
         // 2. Verificar que la nueva contraseña no esté vacía
-        if (request.getNewPassword() == null || request.getNewPassword().isEmpty()) {
+        if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
             return ResponseEntity.badRequest().body("Error: La nueva contraseña no puede estar vacía.");
         }
 

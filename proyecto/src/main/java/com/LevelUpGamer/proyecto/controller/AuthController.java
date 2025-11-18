@@ -45,20 +45,29 @@ public class AuthController {
     public ResponseEntity<?> registerUser(@RequestBody User newUser) {
 
         if (userRepository.findByUsername(newUser.getUsername()).isPresent()) {
-            return ResponseEntity
-                    .badRequest()
-                    .body("Error: ¡El nombre de usuario ya está en uso!");
+            return ResponseEntity.badRequest().body("Error: ¡El nombre de usuario ya está en uso!");
         }
-
         if (userRepository.findByEmail(newUser.getEmail()).isPresent()) {
-            return ResponseEntity
-                    .badRequest()
-                    .body("Error: ¡El email ya está en uso!");
+            return ResponseEntity.badRequest().body("Error: ¡El email ya está en uso!");
         }
 
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
 
-        // --- ¡NUEVA LÓGICA! ---
+        // --- ¡AQUÍ ESTÁ LA LÓGICA DE ROLES! ---
+
+        // 1. Revisa el correo
+        if (newUser.getEmail() != null && newUser.getEmail().endsWith("@duocuc.cl")) {
+            newUser.setUserRole("ROLE_DUOC");
+        } else {
+            newUser.setUserRole("ROLE_USER");
+        }
+
+        // 2. Inicializa los puntos y el nivel
+        newUser.setPointsBalance(0);
+        newUser.setTotalPointsEarned(0);
+        newUser.setUserLevel(1);
+
+
 
         // 1. Guarda el usuario
         User savedUser = userRepository.save(newUser);

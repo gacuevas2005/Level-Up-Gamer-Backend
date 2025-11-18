@@ -30,7 +30,21 @@ public class User implements UserDetails {
 
     private LocalDate dateOfBirth;
 
-    private boolean receiveNotifications; // Para el botón "Quiero recibir notificaciones"
+    private boolean receiveNotifications;
+
+    private String profilePictureUrl;// Para el botón "Quiero recibir notificaciones"
+
+    @Column(nullable = false)
+    private String userRole;
+
+
+    private int pointsBalance;
+
+
+    private int userLevel;
+
+    @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
+    private int totalPointsEarned; // Puntos TOTALES (para nivel)
 
     // --- ¡NUEVA RELACIÓN! ---
     // Un usuario tiene Un carrito.

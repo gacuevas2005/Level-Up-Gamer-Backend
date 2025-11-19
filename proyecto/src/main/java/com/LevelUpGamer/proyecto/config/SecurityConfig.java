@@ -72,7 +72,14 @@ public class SecurityConfig {
                         // 3. ¡LA LÍNEA CLAVE! Permite ver las imágenes subidas
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
 
-                        // 4. Todo lo demás (subir reseñas, ver perfil, etc.) requiere login
+                        // --- 2. ¡NUEVO! RUTAS PÚBLICAS PARA SWAGGER ---
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
+
+
                         .anyRequest().authenticated()
                 );
         // --- Fin de la Configuración ---

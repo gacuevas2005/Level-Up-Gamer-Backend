@@ -1,23 +1,30 @@
 package com.LevelUpGamer.proyecto.controller;
+
 import com.LevelUpGamer.proyecto.model.Product;
 import com.LevelUpGamer.proyecto.model.Review;
 import com.LevelUpGamer.proyecto.Repository.ProductRepository;
 import com.LevelUpGamer.proyecto.Repository.ReviewRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.context.SecurityContextHolder; // <-- AÑADE ESTE IMPORT
-import org.springframework.security.core.Authentication; // <-- AÑADE ESTE IMPORT
 
 import java.util.List;
 import java.util.Optional;
 
-@RestController // Indica que esto es un controlador REST (devuelve JSON)
-@RequestMapping("/api/products") // URL base para todos los endpoints de este controlador
+@RestController
+@RequestMapping("/api/products")
+@Tag(name = "Catálogo de Productos", description = "Endpoints para ver productos, crear nuevos items (admin) y gestionar reseñas de usuarios.")
 public class ProductController {
 
-    // Inyección de dependencias: Spring nos "inyecta" una instancia
-    // del repositorio para que podamos usarla.
     @Autowired
     private ProductRepository productRepository;
 
@@ -25,80 +32,75 @@ public class ProductController {
     private ReviewRepository reviewRepository;
 
     /**
-     * 1. OBTENER TODOS los productos (el catálogo).
-     * Petición: GET http://localhost:8081/api/products
-     * @return Una lista de todos los productos en la base de datos.
+     * 1. OBTENER TODOS los productos.
      */
+    @Operation(summary = "Obtener catálogo completo", description = "Devuelve una lista con todos los productos disponibles en la base de datos.")
+    @ApiResponse(responseCode = "200", description = "Lista de productos obtenida exitosamente")
     @GetMapping
     public List<Product> getAllProducts() {
-        // Mensaje en español para la consola del backend
         System.out.println("Solicitud recibida: Devolviendo todo el catálogo de productos.");
         return productRepository.findAll();
     }
 
     /**
      * 2. OBTENER UN producto por su ID.
-     * Petición: GET http://localhost:8081/api/products/1 (para el ID 1)
-     * @param id El ID del producto que viene en la URL
-     * @return El producto si se encuentra, o un error 404 (Not Found) si no.
      */
+    @Operation(summary = "Obtener producto por ID", description = "Busca un producto específico por su identificador único.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Producto encontrado",
+                    content = @Content(schema = @Schema(implementation = Product.class))),
+            @ApiResponse(responseCode = "404", description = "Producto no encontrado")
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        // Usamos .findById() que devuelve un Optional (puede o no encontrarlo)
+    public ResponseEntity<Product> getProductById(
+            @Parameter(description = "ID del producto a buscar") @PathVariable Long id) {
+
         return productRepository.findById(id)
                 .map(product -> {
-                    // Si se encontró (map)
                     System.out.println("Enviando producto: " + product.getName());
-                    return ResponseEntity.ok(product); // Devuelve 200 OK con el producto
+                    return ResponseEntity.ok(product);
                 })
                 .orElseGet(() -> {
-                    // Si no se encontró (orElseGet)
                     System.out.println("Error: Producto con id " + id + " no encontrado.");
-                    return ResponseEntity.notFound().build(); // Devuelve 404 Not Found
+                    return ResponseEntity.notFound().build();
                 });
     }
 
     /**
      * 3. CREAR un nuevo producto.
-     * Petición: POST http://localhost:8081/api/products
-     * @param newProduct El JSON del producto a crear, viene en el body de la petición.
-     * @return El producto guardado (ya con su ID asignado por la BD).
      */
+    @Operation(summary = "Crear nuevo producto", description = "Guarda un nuevo producto en la base de datos. (Idealmente restringido a administradores).")
+    @ApiResponse(responseCode = "200", description = "Producto creado exitosamente")
     @PostMapping
     public Product createProduct(@RequestBody Product newProduct) {
-        // Mensaje en español para la consola
         System.out.println("Solicitud recibida: Creando nuevo producto - " + newProduct.getName());
-
-        // El método .save() de JPA hace un 'INSERT' si el objeto no tiene ID.
         return productRepository.save(newProduct);
     }
 
-
-
-
     /**
      * 4. AÑADIR UNA NUEVA RESEÑA (Versión Segura)
-     *  Petición: POST http://localhost:8081/api/products/1/reviews
-     * Petición: POST /api/products/1/reviews (AHORA REQUIERE TOKEN)
      */
+    @Operation(summary = "Añadir reseña a un producto", description = "Permite a un usuario autenticado dejar una reseña en un producto. El autor se toma automáticamente del token JWT.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Reseña guardada exitosamente"),
+            @ApiResponse(responseCode = "404", description = "El producto al que intentas reseñar no existe"),
+            @ApiResponse(responseCode = "403", description = "No autorizado (Token inválido o faltante)")
+    })
     @PostMapping("/{productId}/reviews")
     public ResponseEntity<Review> addReviewToProduct(
-            @PathVariable Long productId,
-            @RequestBody Review newReview) { // El 'newReview' del frontend NO traerá 'author'
+            @Parameter(description = "ID del producto a reseñar") @PathVariable Long productId,
+            @RequestBody Review newReview) {
 
-        // --- ¡AQUÍ ESTÁ LA MAGIA! ---
         // 1. Obtenemos la autenticación (gracias al JwtAuthFilter)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        // 2. Obtenemos el username (ej: "GamerPro")
+        // 2. Obtenemos el username
         String currentUsername = authentication.getName();
 
-        // 3. ¡Establecemos el autor en la reseña!
-        // Ignoramos lo que sea que venga en newReview.setAuthor()
+        // 3. ¡Establecemos el autor en la reseña automáticamente!
         newReview.setAuthor(currentUsername);
-        // --- FIN DE LA MAGIA ---
 
-        // Paso A: Busca el producto (esto no cambia)
+        // Paso A: Busca el producto
         Optional<Product> productOptional = productRepository.findById(productId);
 
         if (productOptional.isEmpty()) {
@@ -106,10 +108,10 @@ public class ProductController {
             return ResponseEntity.notFound().build();
         }
 
-        // Paso C: Enlaza la reseña con el producto (esto no cambia)
+        // Paso C: Enlaza la reseña con el producto
         newReview.setProduct(productOptional.get());
 
-        // Paso D: Guarda la reseña (ahora con el autor correcto)
+        // Paso D: Guarda la reseña
         Review savedReview = reviewRepository.save(newReview);
 
         System.out.println("Reseña guardada por '" + currentUsername + "' para el producto: " + productOptional.get().getName());

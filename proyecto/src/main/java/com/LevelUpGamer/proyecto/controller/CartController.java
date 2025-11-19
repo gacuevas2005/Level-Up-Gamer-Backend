@@ -6,16 +6,25 @@ import com.LevelUpGamer.proyecto.dto.CartItemRequest;
 import com.LevelUpGamer.proyecto.model.Cart;
 import com.LevelUpGamer.proyecto.model.CartItem;
 import com.LevelUpGamer.proyecto.model.Product;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map; // <-- ¡NUEVA IMPORTACIÓN!
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/cart")
+@Tag(name = "Carrito de Compras", description = "Operaciones para gestionar el carrito de compras del usuario (ver, añadir, actualizar cantidad, eliminar).")
 public class CartController {
 
     @Autowired
@@ -25,9 +34,10 @@ public class CartController {
     private ProductRepository productRepository;
 
     /**
-     * Obtiene el carrito del usuario actualmente autenticado.
-     * Petición: GET http://localhost:8081/api/cart
+     * Obtiene el carrito del usuario actual.
      */
+    @Operation(summary = "Obtener mi carrito", description = "Devuelve el carrito actual del usuario logueado con todos sus productos y el precio total calculado.")
+    @ApiResponse(responseCode = "200", description = "Carrito obtenido exitosamente")
     @GetMapping
     public ResponseEntity<Cart> getMyCart() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -37,10 +47,13 @@ public class CartController {
     }
 
     /**
-     * Añade un producto al carrito del usuario (o suma la cantidad si ya existe).
-     * Petición: POST http://localhost:8081/api/cart/items
-     * Body: { "productId": 1, "quantity": 1 }
+     * Añade un producto al carrito.
      */
+    @Operation(summary = "Añadir producto al carrito", description = "Añade un producto nuevo al carrito. Si el producto ya existe, suma la cantidad indicada a la existente.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Producto añadido/actualizado correctamente"),
+            @ApiResponse(responseCode = "404", description = "El producto no existe")
+    })
     @PostMapping("/items")
     public ResponseEntity<Cart> addItemToCart(@RequestBody CartItemRequest itemRequest) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -69,16 +82,22 @@ public class CartController {
     }
 
     /**
-     * --- ¡NUEVO MÉTODO! ---
-     * Actualiza la cantidad de un item en el carrito (la "establece").
-     * Petición: PUT http://localhost:8081/api/cart/items/5
-     * (Donde 5 es el ID del *Producto*)
-     * Body: { "quantity": 3 }
+     * Actualiza la cantidad exacta de un item.
      */
+    @Operation(summary = "Actualizar cantidad de un producto", description = "Establece una cantidad específica para un producto en el carrito. Si la cantidad es 0, elimina el producto.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Cantidad actualizada correctamente"),
+            @ApiResponse(responseCode = "400", description = "Cantidad inválida"),
+            @ApiResponse(responseCode = "404", description = "Producto no encontrado en el carrito")
+    })
     @PutMapping("/items/{productId}")
     public ResponseEntity<Cart> updateItemQuantity(
-            @PathVariable Long productId,
-            @RequestBody Map<String, Integer> payload) { // Recibe un JSON simple: {"quantity": N}
+            @Parameter(description = "ID del Producto a actualizar") @PathVariable Long productId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "JSON con la nueva cantidad. Ejemplo: {\"quantity\": 3}",
+                    content = @Content(examples = @ExampleObject(value = "{\"quantity\": 3}"))
+            )
+            @RequestBody Map<String, Integer> payload) {
 
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Cart cart = cartRepository.findByUserUsername(username)
@@ -86,7 +105,7 @@ public class CartController {
 
         Integer newQuantity = payload.get("quantity");
         if (newQuantity == null || newQuantity < 0) {
-            return ResponseEntity.badRequest().body(null); // Cantidad inválida
+            return ResponseEntity.badRequest().body(null);
         }
 
         Optional<CartItem> itemToUpdate = cart.getCartItems().stream()
@@ -95,34 +114,34 @@ public class CartController {
 
         if (itemToUpdate.isPresent()) {
             if (newQuantity == 0) {
-                // Si la cantidad es 0, lo eliminamos
                 cart.getCartItems().remove(itemToUpdate.get());
             } else {
-                // Si es > 0, actualizamos la cantidad
                 itemToUpdate.get().setQuantity(newQuantity);
             }
             Cart savedCart = cartRepository.save(cart);
             return ResponseEntity.ok(savedCart);
         } else {
-            return ResponseEntity.notFound().build(); // Producto no encontrado en el carrito
+            return ResponseEntity.notFound().build();
         }
     }
 
-
     /**
-     * --- ¡MÉTODO CORREGIDO! ---
-     * Elimina un item del carrito usando el ID del Producto.
-     * Petición: DELETE http://localhost:8081/api/cart/items/5
-     * (Donde 5 es el ID del *Producto*, no del CartItem)
+     * Elimina un producto del carrito.
      */
-    @DeleteMapping("/items/{productId}") // CAMBIADO: de {cartItemId} a {productId}
-    public ResponseEntity<Cart> removeItemFromCart(@PathVariable Long productId) { // CAMBIADO: de cartItemId a productId
+    @Operation(summary = "Eliminar producto del carrito", description = "Elimina completamente un producto del carrito, independientemente de la cantidad.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Producto eliminado correctamente"),
+            @ApiResponse(responseCode = "404", description = "El producto no estaba en el carrito")
+    })
+    @DeleteMapping("/items/{productId}")
+    public ResponseEntity<Cart> removeItemFromCart(
+            @Parameter(description = "ID del Producto a eliminar") @PathVariable Long productId) {
+
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
 
         Cart cart = cartRepository.findByUserUsername(username)
                 .orElseThrow(() -> new RuntimeException("Carrito no encontrado"));
 
-        // CAMBIADO: Buscar por productId en lugar de cartItemId
         Optional<CartItem> itemToRemove = cart.getCartItems().stream()
                 .filter(item -> item.getProduct().getId().equals(productId))
                 .findFirst();
@@ -137,17 +156,17 @@ public class CartController {
     }
 
     /**
-     * --- ¡NUEVO MÉTODO! ---
-     * Vacía por completo el carrito del usuario.
-     * Petición: DELETE http://localhost:8081/api/cart
+     * Vacía el carrito completo.
      */
+    @Operation(summary = "Vaciar carrito", description = "Elimina TODOS los productos del carrito del usuario.")
+    @ApiResponse(responseCode = "200", description = "Carrito vaciado exitosamente")
     @DeleteMapping
     public ResponseEntity<Cart> clearCart() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Cart cart = cartRepository.findByUserUsername(username)
                 .orElseThrow(() -> new RuntimeException("Carrito no encontrado"));
 
-        cart.getCartItems().clear(); // Elimina todos los items de la lista
+        cart.getCartItems().clear();
 
         Cart savedCart = cartRepository.save(cart);
         return ResponseEntity.ok(savedCart);

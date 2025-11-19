@@ -1,6 +1,6 @@
 package com.LevelUpGamer.proyecto.controller;
 
-// DTOs (Cajas de datos)
+// DTOs
 import com.LevelUpGamer.proyecto.dto.ChangePasswordRequest;
 import com.LevelUpGamer.proyecto.dto.ProfileResponse;
 // Modelo y Repositorio
@@ -8,26 +8,32 @@ import com.LevelUpGamer.proyecto.model.User;
 import com.LevelUpGamer.proyecto.Repository.UserRepository;
 // Servicios
 import com.LevelUpGamer.proyecto.service.FileStorageService;
-// Utilidad para la extensión del archivo
+// Swagger Imports
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+// Utilidad
 import org.apache.commons.io.FilenameUtils;
-// Imports de Spring
+// Spring Imports
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-// Imports de Java
 import java.io.IOException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/profile") // Todas las rutas aquí están protegidas
+@RequestMapping("/api/profile")
+@Tag(name = "Perfil de Usuario", description = "Operaciones para ver y editar el perfil, subir foto y cambiar contraseña.")
 public class ProfileController {
-
-    // --- Inyección de Dependencias ---
 
     @Autowired
     private UserRepository userRepository;
@@ -36,14 +42,14 @@ public class ProfileController {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private FileStorageService fileStorageService; // El servicio para guardar archivos
-
-    // --- Endpoints ---
+    private FileStorageService fileStorageService;
 
     /**
-     * OBTENER el perfil del usuario actualmente logueado.
-     * Petición: GET /api/profile/me
+     * OBTENER el perfil.
      */
+    @Operation(summary = "Obtener mi perfil", description = "Devuelve la información del usuario actualmente autenticado (basado en el Token JWT).")
+    @ApiResponse(responseCode = "200", description = "Perfil obtenido exitosamente",
+            content = @Content(schema = @Schema(implementation = ProfileResponse.class)))
     @GetMapping("/me")
     public ResponseEntity<ProfileResponse> getMyProfile() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -53,9 +59,13 @@ public class ProfileController {
     }
 
     /**
-     * ACTUALIZAR la información del perfil (username, email, notificaciones).
-     * Petición: PUT /api/profile/me
+     * ACTUALIZAR la información del perfil.
      */
+    @Operation(summary = "Actualizar datos del perfil", description = "Permite cambiar username, email o preferencias. Valida que el nuevo username/email no estén en uso.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Perfil actualizado correctamente"),
+            @ApiResponse(responseCode = "400", description = "El nombre de usuario o email ya están en uso")
+    })
     @PutMapping("/me")
     public ResponseEntity<?> updateMyProfile(@RequestBody Map<String, Object> updates) {
 
@@ -63,7 +73,6 @@ public class ProfileController {
         User currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Validar y actualizar campos de texto
         if (updates.containsKey("username")) {
             String newUsername = updates.get("username").toString();
             if (userRepository.findByUsername(newUsername).isPresent() && !currentUser.getUsername().equals(newUsername)) {
@@ -84,38 +93,37 @@ public class ProfileController {
             currentUser.setReceiveNotifications((Boolean) updates.get("receiveNotifications"));
         }
 
-        // Guardar los cambios en la BD
         User updatedUser = userRepository.save(currentUser);
         return ResponseEntity.ok(new ProfileResponse(updatedUser));
     }
 
     /**
-     * Sube o actualiza la FOTO de perfil del usuario logueado.
-     * Petición: POST /api/profile/picture
+     * Sube la FOTO de perfil.
      */
-    @PostMapping("/picture")
-    public ResponseEntity<?> uploadProfilePicture(@RequestParam("file") MultipartFile file) {
+    @Operation(summary = "Subir foto de perfil", description = "Sube una imagen (jpg, png), la guarda en el servidor y actualiza la URL del perfil.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Foto subida exitosamente. Retorna la nueva URL pública."),
+            @ApiResponse(responseCode = "400", description = "Error al leer el archivo o formato inválido")
+    })
+    @PostMapping(value = "/picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadProfilePicture(
+            @Parameter(description = "Archivo de imagen a subir", required = true)
+            @RequestParam("file") MultipartFile file) {
 
-        // 1. Obtener el usuario actual
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         try {
-            // 2. Generar un nombre de archivo único (ej: user_1_avatar.png)
             String extension = FilenameUtils.getExtension(file.getOriginalFilename());
             String newFilename = "user_" + currentUser.getId() + "_avatar." + extension;
 
-            // 3. Guardar el archivo en el disco (en la carpeta 'uploads')
             fileStorageService.store(file, newFilename);
 
-            // 4. --- ¡LA CORRECCIÓN CRÍTICA! ---
-            // Guardar la RUTA PÚBLICA ABSOLUTA en la BD
             String publicPath = "http://localhost:8081/uploads/" + newFilename;
             currentUser.setProfilePictureUrl(publicPath);
             userRepository.save(currentUser);
 
-            // 5. Devolver la nueva ruta al frontend
             return ResponseEntity.ok(Map.of("profilePictureUrl", publicPath));
 
         } catch (IOException e) {
@@ -125,9 +133,13 @@ public class ProfileController {
     }
 
     /**
-     * CAMBIAR la contraseña del usuario.
-     * Petición: POST /api/profile/change-password
+     * CAMBIAR la contraseña.
      */
+    @Operation(summary = "Cambiar contraseña", description = "Verifica la contraseña actual y actualiza a la nueva contraseña encriptada.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Contraseña actualizada"),
+            @ApiResponse(responseCode = "400", description = "La contraseña antigua es incorrecta o la nueva es inválida")
+    })
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
 
@@ -135,17 +147,14 @@ public class ProfileController {
         User currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // 1. Verificar que la contraseña antigua es correcta
         if (!passwordEncoder.matches(request.getOldPassword(), currentUser.getPassword())) {
             return ResponseEntity.badRequest().body("Error: La contraseña antigua es incorrecta.");
         }
 
-        // 2. Verificar que la nueva contraseña no esté vacía
         if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
             return ResponseEntity.badRequest().body("Error: La nueva contraseña no puede estar vacía.");
         }
 
-        // 3. Hashear y guardar la nueva contraseña
         currentUser.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(currentUser);
 

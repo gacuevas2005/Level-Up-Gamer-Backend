@@ -47,10 +47,6 @@ public class User implements UserDetails {
     private int totalPointsEarned; // Puntos TOTALES (para nivel)
 
     // --- ¡NUEVA RELACIÓN! ---
-    // Un usuario tiene Un carrito.
-    // mappedBy="user": Le dice a JPA que la clave foránea (la columna user_id)
-    //                  está definida en el campo "user" del modelo Cart.
-    // cascade=ALL: Si borro un usuario, también se borra su carrito.
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     @JsonIgnore // Evita bucles al convertir a JSON
     private Cart cart;

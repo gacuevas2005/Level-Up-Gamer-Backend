@@ -50,8 +50,8 @@ public class OrderController {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Busca todas las órdenes de este ID de usuario
-        List<Order> orders = orderRepository.findByUserId(user.getId());
+        // CAMBIO AQUÍ: Usamos el método optimizado "WithItems"
+        List<Order> orders = orderRepository.findByUserIdWithItems(user.getId());
 
         return ResponseEntity.ok(orders);
     }

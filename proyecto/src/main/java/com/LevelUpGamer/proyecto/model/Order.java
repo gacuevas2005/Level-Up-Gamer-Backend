@@ -38,7 +38,6 @@ public class Order {
     )
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    // Constructor simple
     public Order() {
         this.orderDate = LocalDateTime.now();
     }

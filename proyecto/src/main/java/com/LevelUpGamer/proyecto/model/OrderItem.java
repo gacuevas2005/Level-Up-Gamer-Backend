@@ -18,7 +18,7 @@ public class OrderItem {
     @JsonIgnore // Evita bucles
     private Order order;
 
-    @ManyToOne(fetch = FetchType.EAGER) // Queremos ver el producto
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
@@ -26,5 +26,5 @@ public class OrderItem {
     private int quantity;
 
     @Column(nullable = false)
-    private Double priceAtPurchase; // ¡Importante! Guarda el precio al momento de la compra
+    private Double priceAtPurchase;
 }

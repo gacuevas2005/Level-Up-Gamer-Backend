@@ -1,7 +1,7 @@
 package com.LevelUpGamer.proyecto.controller;
 
 import com.LevelUpGamer.proyecto.Repository.OrderRepository;
-import com.LevelUpGamer.proyecto.Repository.UserRepository; // Necesario para buscar ID por username
+import com.LevelUpGamer.proyecto.Repository.UserRepository;
 import com.LevelUpGamer.proyecto.model.Order;
 import com.LevelUpGamer.proyecto.model.User;
 import com.LevelUpGamer.proyecto.service.OrderService;
@@ -50,7 +50,6 @@ public class OrderController {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // CAMBIO AQUÍ: Usamos el método optimizado "WithItems"
         List<Order> orders = orderRepository.findByUserIdWithItems(user.getId());
 
         return ResponseEntity.ok(orders);

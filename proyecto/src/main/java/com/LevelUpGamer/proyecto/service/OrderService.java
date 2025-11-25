@@ -47,17 +47,13 @@ public class OrderService {
 
         // 3. APLICAR LÓGICA DE DUOC (¡TU REGLA DE NEGOCIO!)
         if (user.getUserRole() != null && user.getUserRole().equals("ROLE_DUOC")) {
-            // Aplica 20% de descuento
             finalPrice = originalPrice * 0.80;
 
-            // Calcula puntos (¡TU FÓRMULA!)
             pointsEarned = (int) (Math.floor(finalPrice / 1000) * 10);
 
             user.setPointsBalance(user.getPointsBalance() + pointsEarned);
-            // Añade puntos al "historial" (para nivel)
-            user.setTotalPointsEarned(user.getTotalPointsEarned() + pointsEarned); // <-- ¡AÑADE ESTO!
+            user.setTotalPointsEarned(user.getTotalPointsEarned() + pointsEarned);
 
-            // Actualiza el nivel (ahora usará el total)
             updateUserLevel(user);
         }
 
@@ -74,21 +70,18 @@ public class OrderService {
             orderItem.setOrder(newOrder);
             orderItem.setProduct(cartItem.getProduct());
             orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setPriceAtPurchase(cartItem.getProduct().getPrice()); // Guarda el precio de ese momento
+            orderItem.setPriceAtPurchase(cartItem.getProduct().getPrice());
 
             newOrder.getOrderItems().add(orderItem);
         }
 
         // 6. VACIAR EL CARRITO
-        // 'orphanRemoval=true' y 'cascade=ALL' en Cart.java se encargarían
-        // de los CartItems si borramos el carrito.
-        // Pero es más seguro solo vaciar la lista:
         cart.getCartItems().clear();
 
         // 7. GUARDAR TODO EN LA BD
-        cartRepository.save(cart);      // Guarda el carrito (ahora vacío)
-        userRepository.save(user);      // Guarda el usuario (con nuevos puntos/nivel)
-        Order savedOrder = orderRepository.save(newOrder); // Guarda el pedido (y sus items)
+        cartRepository.save(cart);
+        userRepository.save(user);
+        Order savedOrder = orderRepository.save(newOrder);
 
         return savedOrder;
     }

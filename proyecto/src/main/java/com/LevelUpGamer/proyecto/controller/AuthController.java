@@ -4,6 +4,7 @@ import com.LevelUpGamer.proyecto.Repository.CartRepository;
 import com.LevelUpGamer.proyecto.Repository.UserRepository;
 import com.LevelUpGamer.proyecto.dto.AuthResponse;
 import com.LevelUpGamer.proyecto.dto.LoginRequest;
+import com.LevelUpGamer.proyecto.dto.RegisterRequest; // <-- IMPORTANTE
 import com.LevelUpGamer.proyecto.model.Cart;
 import com.LevelUpGamer.proyecto.model.User;
 import com.LevelUpGamer.proyecto.service.JwtService;
@@ -42,50 +43,73 @@ public class AuthController {
 
     /**
      * Endpoint para registrar un nuevo usuario.
+     * AHORA USA RegisterRequest PARA RECIBIR LA CONTRASEÑA CORRECTAMENTE
      */
     @Operation(
             summary = "Registrar un nuevo usuario",
-            description = "Crea una cuenta nueva en el sistema. " +
-                    "Si el correo termina en '@duocuc.cl', se asigna automáticamente el rol ROLE_DUOC y beneficios. " +
-                    "También inicializa un carrito de compras vacío para el usuario."
+            description = "Crea una cuenta nueva. Asigna automáticamente rol, puntos iniciales (0) y crea un carrito vacío. Si el email es @duocuc.cl, asigna rol DUOC."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Usuario registrado exitosamente"),
             @ApiResponse(responseCode = "400", description = "El nombre de usuario o el correo electrónico ya están en uso")
     })
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody User newUser) {
+    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest request) { // <-- Usamos el DTO
 
-        if (userRepository.findByUsername(newUser.getUsername()).isPresent()) {
+        // 1. Validaciones previas usando los datos del request
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             return ResponseEntity.badRequest().body("Error: ¡El nombre de usuario ya está en uso!");
         }
-        if (userRepository.findByEmail(newUser.getEmail()).isPresent()) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body("Error: ¡El email ya está en uso!");
         }
 
-        newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
+        // 2. Crear la entidad User y pasarle los datos
+        User newUser = new User();
+        newUser.setUsername(request.getUsername());
+        newUser.setEmail(request.getEmail());
+        newUser.setDateOfBirth(request.getDateOfBirth());
 
-        // --- LÓGICA DE ROLES ---
+        // 3. Encriptar contraseña (AHORA SÍ FUNCIONARÁ PORQUE request.getPassword() NO ES NULL)
+        newUser.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        // --- LÓGICA DE ASIGNACIÓN DE DATOS ---
+        System.out.println("Iniciando registro para: " + newUser.getEmail());
+
+        // A. Asignar Rol
         if (newUser.getEmail() != null && newUser.getEmail().endsWith("@duocuc.cl")) {
             newUser.setUserRole("ROLE_DUOC");
+            System.out.println("Rol asignado: ROLE_DUOC");
         } else {
             newUser.setUserRole("ROLE_USER");
+            System.out.println("Rol asignado: ROLE_USER");
         }
 
-        // Inicializa puntos y nivel
+        // B. Inicializar Puntos y Nivel
         newUser.setPointsBalance(0);
         newUser.setTotalPointsEarned(0);
         newUser.setUserLevel(1);
+        System.out.println("Puntos y nivel inicializados.");
 
-        // 1. Guarda el usuario
-        User savedUser = userRepository.save(newUser);
+        // ---------------------------------------------------
 
-        // 2. Crea un carrito vacío para este nuevo usuario
-        Cart newCart = new Cart();
-        newCart.setUser(savedUser);
-        cartRepository.save(newCart);
+        try {
+            // 4. Guardar el usuario
+            User savedUser = userRepository.save(newUser);
+            System.out.println("Usuario guardado con ID: " + savedUser.getId() + " y Rol: " + savedUser.getUserRole());
 
-        return ResponseEntity.ok("¡Usuario registrado exitosamente!");
+            // 5. Crear un carrito vacío asociado al usuario
+            Cart newCart = new Cart();
+            newCart.setUser(savedUser);
+            cartRepository.save(newCart);
+            System.out.println("Carrito creado para el usuario.");
+
+            return ResponseEntity.ok("¡Usuario registrado exitosamente!");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Error al guardar el usuario: " + e.getMessage());
+        }
     }
 
     /**
@@ -93,12 +117,11 @@ public class AuthController {
      */
     @Operation(
             summary = "Iniciar sesión",
-            description = "Autentica las credenciales del usuario (username y password) y devuelve un Token JWT. " +
-                    "Este token debe usarse en la cabecera 'Authorization' para acceder a rutas protegidas."
+            description = "Autentica las credenciales y devuelve un Token JWT."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Login exitoso, devuelve el token"),
-            @ApiResponse(responseCode = "401", description = "Credenciales incorrectas (usuario o contraseña no válidos)")
+            @ApiResponse(responseCode = "200", description = "Login exitoso"),
+            @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
     })
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {

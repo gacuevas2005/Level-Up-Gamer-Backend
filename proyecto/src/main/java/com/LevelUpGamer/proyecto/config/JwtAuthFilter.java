@@ -6,7 +6,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -28,60 +27,49 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
     ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String username;
 
-        // Si no hay cabecera "Authorization" o no empieza con "Bearer ",
-        // pasamos al siguiente filtro.
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extraemos el token (quitando "Bearer ")
         jwt = authHeader.substring(7);
 
         try {
-            // Extraemos el nombre de usuario del token
             username = jwtService.extractUsername(jwt);
 
-            // Si tenemos nombre de usuario Y no está ya autenticado
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                // Cargamos los detalles del usuario desde la BD
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-                // Validamos el token
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    // Creamos un token de autenticación
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
-                            null, // No usamos credenciales (contraseña) aquí
+                            null,
                             userDetails.getAuthorities()
                     );
                     authToken.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request)
                     );
-                    // ¡Establecemos al usuario como autenticado!
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-            // Pasamos al siguiente filtro
-            filterChain.doFilter(request, response);
-
         } catch (Exception e) {
-            // Si el token es inválido (expirado, malformado, etc.)
-            // Simplemente no lo autenticamos y seguimos.
-            // (Podríamos enviar un error 401 aquí si quisiéramos)
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Token JWT inválido o expirado");
-            return;
+            // --- ¡CAMBIO IMPORTANTE! ---
+            // Si el token está vencido o es inválido, NO bloqueamos la petición.
+            // Simplemente no autenticamos al usuario y dejamos que siga.
+            // SecurityConfig decidirá si la ruta requiere autenticación o no.
+            System.out.println("Token inválido ignorado: " + e.getMessage());
         }
+
+        // Siempre continuamos la cadena
+        filterChain.doFilter(request, response);
     }
 }

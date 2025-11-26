@@ -3,7 +3,7 @@ package com.LevelUpGamer.proyecto.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod; // <-- Import correcto
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -22,7 +22,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // Se inyecta el filtro JWT
     @Autowired
     private JwtAuthFilter jwtAuthFilter;
 
@@ -37,8 +36,6 @@ public class SecurityConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-
-        // Usa el servicio inyectado
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
@@ -55,34 +52,28 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // No usa sesiones
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class) // Añade el "guardia"
-
-                // --- Configuración de Permisos (Corregida) ---
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(authz -> authz
-
-                        // 1. Permite ver productos (Solo GET)
-                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
-
-                        // 2. Permite Login y Registro
+                        // --- RUTAS PÚBLICAS ---
+                        .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() // Ver productos es público
                         .requestMatchers("/api/auth/**").permitAll()
-
-                        // 3. ¡LA LÍNEA CLAVE! Permite ver las imágenes subidas
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
-                        // --- 2. ¡NUEVO! RUTAS PÚBLICAS PARA SWAGGER ---
-                        .requestMatchers(
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html"
-                        ).permitAll()
+                        // --- RUTAS DE ADMINISTRADOR (NUEVO) ---
+                        // Solo el admin puede ver estadísticas, crear/borrar productos y moderar
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").hasRole("ADMIN")
 
-
+                        // --- RUTAS DE USUARIO AUTENTICADO ---
                         .anyRequest().authenticated()
                 );
-        // --- Fin de la Configuración ---
 
         return http.build();
     }

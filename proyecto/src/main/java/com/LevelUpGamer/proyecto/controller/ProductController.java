@@ -4,25 +4,27 @@ import com.LevelUpGamer.proyecto.model.Product;
 import com.LevelUpGamer.proyecto.model.Review;
 import com.LevelUpGamer.proyecto.Repository.ProductRepository;
 import com.LevelUpGamer.proyecto.Repository.ReviewRepository;
+import com.LevelUpGamer.proyecto.service.FileStorageService; // Usamos tu servicio de archivos
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.apache.commons.io.FilenameUtils; // Necesario para extensiones
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/products")
-@Tag(name = "Catálogo de Productos", description = "Endpoints para ver productos, crear nuevos items (admin) y gestionar reseñas de usuarios.")
+@Tag(name = "Gestión de Productos", description = "Catálogo público y administración de productos (CRUD completo con imágenes).")
 public class ProductController {
 
     @Autowired
@@ -31,90 +33,122 @@ public class ProductController {
     @Autowired
     private ReviewRepository reviewRepository;
 
-    /**
-     * 1. OBTENER TODOS los productos.
-     */
-    @Operation(summary = "Obtener catálogo completo", description = "Devuelve una lista con todos los productos disponibles en la base de datos.")
-    @ApiResponse(responseCode = "200", description = "Lista de productos obtenida exitosamente")
+    @Autowired
+    private FileStorageService fileStorageService;
+
+    // --- PÚBLICO: VER PRODUCTOS ---
+
     @GetMapping
     public List<Product> getAllProducts() {
-        System.out.println("Solicitud recibida: Devolviendo todo el catálogo de productos.");
         return productRepository.findAll();
     }
 
-    /**
-     * 2. OBTENER UN producto por su ID.
-     */
-    @Operation(summary = "Obtener producto por ID", description = "Busca un producto específico por su identificador único.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Producto encontrado",
-                    content = @Content(schema = @Schema(implementation = Product.class))),
-            @ApiResponse(responseCode = "404", description = "Producto no encontrado")
-    })
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(
-            @Parameter(description = "ID del producto a buscar") @PathVariable Long id) {
-
+    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         return productRepository.findById(id)
-                .map(product -> {
-                    System.out.println("Enviando producto: " + product.getName());
-                    return ResponseEntity.ok(product);
-                })
-                .orElseGet(() -> {
-                    System.out.println("Error: Producto con id " + id + " no encontrado.");
-                    return ResponseEntity.notFound().build();
-                });
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * 3. CREAR un nuevo producto.
-     */
-    @Operation(summary = "Crear nuevo producto", description = "Guarda un nuevo producto en la base de datos. (Idealmente restringido a administradores).")
-    @ApiResponse(responseCode = "200", description = "Producto creado exitosamente")
-    @PostMapping
-    public Product createProduct(@RequestBody Product newProduct) {
-        System.out.println("Solicitud recibida: Creando nuevo producto - " + newProduct.getName());
-        return productRepository.save(newProduct);
+    // --- ADMIN: CREAR PRODUCTO CON IMAGEN ---
+
+    @Operation(summary = "Crear producto (Admin)", description = "Requiere Multipart/Form-Data. Sube la imagen al servidor y guarda la ruta en la BD.")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createProduct(
+            @RequestParam("name") String name,
+            @RequestParam("price") Double price,
+            @RequestParam("category") String category,
+            @RequestParam("description") String description,
+            @RequestParam(value = "manufacturer", required = false) String manufacturer,
+            @RequestParam("image") MultipartFile imageFile
+    ) {
+        try {
+            Product newProduct = new Product();
+            newProduct.setName(name);
+            newProduct.setPrice(price);
+            newProduct.setCategory(category);
+            newProduct.setDescription(description);
+            newProduct.setManufacturer(manufacturer);
+
+            // Guardar Imagen
+            String extension = FilenameUtils.getExtension(imageFile.getOriginalFilename());
+            String filename = "prod_" + System.currentTimeMillis() + "." + extension;
+            fileStorageService.store(imageFile, filename);
+
+            // Generar URL pública
+            String imageUrl = "http://localhost:8081/uploads/" + filename;
+            newProduct.setImageUrl(imageUrl);
+
+            Product savedProduct = productRepository.save(newProduct);
+            return ResponseEntity.ok(savedProduct);
+
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body("Error al subir la imagen: " + e.getMessage());
+        }
     }
 
-    /**
-     * 4. AÑADIR UNA NUEVA RESEÑA (Versión Segura)
-     */
-    @Operation(summary = "Añadir reseña a un producto", description = "Permite a un usuario autenticado dejar una reseña en un producto. El autor se toma automáticamente del token JWT.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Reseña guardada exitosamente"),
-            @ApiResponse(responseCode = "404", description = "El producto al que intentas reseñar no existe"),
-            @ApiResponse(responseCode = "403", description = "No autorizado (Token inválido o faltante)")
-    })
-    @PostMapping("/{productId}/reviews")
-    public ResponseEntity<Review> addReviewToProduct(
-            @Parameter(description = "ID del producto a reseñar") @PathVariable Long productId,
-            @RequestBody Review newReview) {
+    // --- ADMIN: ACTUALIZAR PRODUCTO ---
 
-        // 1. Obtenemos la autenticación (gracias al JwtAuthFilter)
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    @Operation(summary = "Actualizar producto (Admin)", description = "Actualiza datos. Si se envía una nueva imagen, reemplaza la anterior.")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateProduct(
+            @PathVariable Long id,
+            @RequestParam("name") String name,
+            @RequestParam("price") Double price,
+            @RequestParam("category") String category,
+            @RequestParam("description") String description,
+            @RequestParam(value = "image", required = false) MultipartFile imageFile
+    ) {
+        return productRepository.findById(id).map(product -> {
+            try {
+                product.setName(name);
+                product.setPrice(price);
+                product.setCategory(category);
+                product.setDescription(description);
 
-        // 2. Obtenemos el username
-        String currentUsername = authentication.getName();
+                // Solo actualizamos la imagen si el admin subió una nueva
+                if (imageFile != null && !imageFile.isEmpty()) {
+                    String extension = FilenameUtils.getExtension(imageFile.getOriginalFilename());
+                    String filename = "prod_" + id + "_" + System.currentTimeMillis() + "." + extension;
+                    fileStorageService.store(imageFile, filename);
 
-        // 3. ¡Establecemos el autor en la reseña automáticamente!
-        newReview.setAuthor(currentUsername);
+                    String imageUrl = "http://localhost:8081/uploads/" + filename;
+                    product.setImageUrl(imageUrl);
+                }
 
-        // Paso A: Busca el producto
-        Optional<Product> productOptional = productRepository.findById(productId);
+                return ResponseEntity.ok(productRepository.save(product));
+            } catch (IOException e) {
+                return ResponseEntity.badRequest().body("Error al procesar imagen");
+            }
+        }).orElse(ResponseEntity.notFound().build());
+    }
 
-        if (productOptional.isEmpty()) {
-            System.out.println("Error: No se encontró el producto con id " + productId);
+    // --- ADMIN: ELIMINAR PRODUCTO ---
+
+    @Operation(summary = "Eliminar producto (Admin)", description = "Elimina un producto de la base de datos.")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
+        if (!productRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
+        productRepository.deleteById(id);
+        return ResponseEntity.ok("Producto eliminado correctamente");
+    }
 
-        // Paso C: Enlaza la reseña con el producto
-        newReview.setProduct(productOptional.get());
+    // --- USUARIO: AÑADIR RESEÑA ---
 
-        // Paso D: Guarda la reseña
-        Review savedReview = reviewRepository.save(newReview);
+    @PostMapping("/{productId}/reviews")
+    public ResponseEntity<Review> addReviewToProduct(
+            @PathVariable Long productId,
+            @RequestBody Review newReview) {
 
-        System.out.println("Reseña guardada por '" + currentUsername + "' para el producto: " + productOptional.get().getName());
-        return ResponseEntity.ok(savedReview);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        newReview.setAuthor(currentUsername);
+
+        return productRepository.findById(productId).map(product -> {
+            newReview.setProduct(product);
+            return ResponseEntity.ok(reviewRepository.save(newReview));
+        }).orElse(ResponseEntity.notFound().build());
     }
 }

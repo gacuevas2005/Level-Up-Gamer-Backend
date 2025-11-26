@@ -7,11 +7,16 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.GrantedAuthority;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class JwtService {
@@ -25,7 +30,18 @@ public class JwtService {
     }
 
     public String generateToken(UserDetails userDetails) {
+        // 1. Extraer los roles del usuario y convertirlos a una lista de Strings
+        List<String> roles = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
+        // 2. Crear un mapa para los claims (opcional, pero ordenado)
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", roles); // Guardamos la lista bajo la clave "roles"
+
+        // 3. Construir el token inyectando los claims
         return Jwts.builder()
+                .setClaims(claims) // <--- Aquí inyectamos los roles
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))

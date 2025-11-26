@@ -1,5 +1,6 @@
 package com.LevelUpGamer.proyecto.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -8,7 +9,8 @@ import java.util.List;
 
 @Data
 @Entity
-@Table(name = "orders") // "order" es una palabra reservada en SQL
+@Table(name = "orders")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})// "order" es una palabra reservada en SQL
 public class Order {
 
     @Id

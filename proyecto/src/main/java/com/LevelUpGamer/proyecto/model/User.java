@@ -9,10 +9,12 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Collections;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Data
 @Entity
 @Table(name = "users")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User implements UserDetails {
 
     @Id
@@ -33,30 +35,30 @@ public class User implements UserDetails {
 
     private boolean receiveNotifications;
 
-    private String profilePictureUrl;// Para el botón "Quiero recibir notificaciones"
+    private String profilePictureUrl;
 
     @Column(nullable = false)
-    private String userRole;
-
+    private String userRole; // Aquí se guarda "ROLE_ADMIN", "ROLE_USER", etc.
 
     private int pointsBalance;
-
 
     private int userLevel;
 
     @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
-    private int totalPointsEarned; // Puntos TOTALES (para nivel)
+    private int totalPointsEarned;
 
-    // --- ¡NUEVA RELACIÓN! ---
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    @JsonIgnore // Evita bucles al convertir a JSON
+    @JsonIgnore
     private Cart cart;
 
-
+    // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        // Usamos el valor real de la variable 'userRole'
+        // Esto permite que Spring Security reconozca si eres ADMIN o DUOC
+        return Collections.singletonList(new SimpleGrantedAuthority(this.userRole));
     }
+    // ---------------------------------
 
     @Override
     public String getPassword() {
@@ -67,7 +69,6 @@ public class User implements UserDetails {
     public String getUsername() {
         return this.username;
     }
-
 
     @Override
     public boolean isAccountNonExpired() {

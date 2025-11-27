@@ -52,7 +52,6 @@ public class ProductController {
 
     // --- ADMIN: CREAR PRODUCTO CON IMAGEN ---
 
-    @Operation(summary = "Crear producto (Admin)", description = "Requiere Multipart/Form-Data. Sube la imagen al servidor y guarda la ruta en la BD.")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createProduct(
             @RequestParam("name") String name,
@@ -60,7 +59,8 @@ public class ProductController {
             @RequestParam("category") String category,
             @RequestParam("description") String description,
             @RequestParam(value = "manufacturer", required = false) String manufacturer,
-            @RequestParam("image") MultipartFile imageFile
+            @RequestParam(value = "distributor", required = false) String distributor, // <-- AGREGADO
+            @RequestParam(value = "image", required = false) MultipartFile imageFile // <-- Hacemos la imagen opcional para evitar error si no envían
     ) {
         try {
             Product newProduct = new Product();
@@ -69,27 +69,25 @@ public class ProductController {
             newProduct.setCategory(category);
             newProduct.setDescription(description);
             newProduct.setManufacturer(manufacturer);
+            newProduct.setDistributor(distributor); // <-- AGREGADO
 
-            // Guardar Imagen
-            String extension = FilenameUtils.getExtension(imageFile.getOriginalFilename());
-            String filename = "prod_" + System.currentTimeMillis() + "." + extension;
-            fileStorageService.store(imageFile, filename);
+            // Guardar Imagen solo si existe
+            if (imageFile != null && !imageFile.isEmpty()) {
+                String extension = FilenameUtils.getExtension(imageFile.getOriginalFilename());
+                String filename = "prod_" + System.currentTimeMillis() + "." + extension;
+                fileStorageService.store(imageFile, filename);
+                newProduct.setImageUrl("http://localhost:8081/uploads/" + filename);
+            } else {
+                newProduct.setImageUrl("http://localhost:8081/uploads/default.png"); // Imagen por defecto opcional
+            }
 
-            // Generar URL pública
-            String imageUrl = "http://localhost:8081/uploads/" + filename;
-            newProduct.setImageUrl(imageUrl);
-
-            Product savedProduct = productRepository.save(newProduct);
-            return ResponseEntity.ok(savedProduct);
-
+            return ResponseEntity.ok(productRepository.save(newProduct));
         } catch (IOException e) {
-            return ResponseEntity.badRequest().body("Error al subir la imagen: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 
     // --- ADMIN: ACTUALIZAR PRODUCTO ---
-
-    @Operation(summary = "Actualizar producto (Admin)", description = "Actualiza datos. Si se envía una nueva imagen, reemplaza la anterior.")
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateProduct(
             @PathVariable Long id,
@@ -97,6 +95,8 @@ public class ProductController {
             @RequestParam("price") Double price,
             @RequestParam("category") String category,
             @RequestParam("description") String description,
+            @RequestParam(value = "manufacturer", required = false) String manufacturer, // <-- AGREGADO
+            @RequestParam(value = "distributor", required = false) String distributor,   // <-- AGREGADO
             @RequestParam(value = "image", required = false) MultipartFile imageFile
     ) {
         return productRepository.findById(id).map(product -> {
@@ -105,15 +105,14 @@ public class ProductController {
                 product.setPrice(price);
                 product.setCategory(category);
                 product.setDescription(description);
+                product.setManufacturer(manufacturer); // <-- AGREGADO
+                product.setDistributor(distributor);   // <-- AGREGADO
 
-                // Solo actualizamos la imagen si el admin subió una nueva
                 if (imageFile != null && !imageFile.isEmpty()) {
                     String extension = FilenameUtils.getExtension(imageFile.getOriginalFilename());
                     String filename = "prod_" + id + "_" + System.currentTimeMillis() + "." + extension;
                     fileStorageService.store(imageFile, filename);
-
-                    String imageUrl = "http://localhost:8081/uploads/" + filename;
-                    product.setImageUrl(imageUrl);
+                    product.setImageUrl("http://localhost:8081/uploads/" + filename);
                 }
 
                 return ResponseEntity.ok(productRepository.save(product));

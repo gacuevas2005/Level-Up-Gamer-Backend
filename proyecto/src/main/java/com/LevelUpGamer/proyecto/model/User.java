@@ -62,6 +62,7 @@ public class User implements UserDetails {
     // --- IMPLEMENTACIÓN DE USERDETAILS ---
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         // Convierte el String userRole en una Autoridad real de Spring Security
         return Collections.singletonList(new SimpleGrantedAuthority(this.userRole));

@@ -73,11 +73,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                 .map(role -> new SimpleGrantedAuthority(role))
                                 .collect(Collectors.toList());
 
-                        System.out.println("✅ ADMIN ACCESS: Roles leídos del Token: " + rolesFromToken);
+                        System.out.println("ADMIN ACCESS: Roles leídos del Token: " + rolesFromToken);
                     } else {
                         // Si no, usamos los de la DB (fallback)
                         authorities = userDetails.getAuthorities();
-                        System.out.println("⚠️ ADMIN WARNING: Usando roles de DB (Token sin roles)");
+                        System.out.println("ADMIN WARNING: Usando roles de DB (Token sin roles)");
                     }
 
                     // Creamos la autenticación con las autoridades CORRECTAS
@@ -94,7 +94,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            System.out.println("❌ Error en autenticación JWT: " + e.getMessage());
+            System.out.println("Error en autenticación JWT: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);

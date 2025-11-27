@@ -53,9 +53,9 @@ public class DataInitializer implements CommandLineRunner {
             cartRepository.save(adminCart);
 
             System.out.println("=========================================");
-            System.out.println(" 🚀 USUARIO ADMIN CREADO AUTOMÁTICAMENTE");
-            System.out.println(" 👤 Usuario: admin");
-            System.out.println(" 🔑 Clave:   admin123");
+            System.out.println(" USUARIO ADMIN CREADO AUTOMÁTICAMENTE");
+            System.out.println(" Usuario: admin");
+            System.out.println(" Clave:   admin123");
             System.out.println("=========================================");
         }
     }

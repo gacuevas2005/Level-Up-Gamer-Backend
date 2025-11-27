@@ -1,15 +1,16 @@
 package com.LevelUpGamer.proyecto.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Collections;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Data
 @Entity
@@ -28,7 +29,7 @@ public class User implements UserDetails {
     private String email;
 
     @Column(nullable = false)
-    @JsonIgnore
+    @JsonIgnore // La contraseña nunca se envía al frontend
     private String password;
 
     private LocalDate dateOfBirth;
@@ -38,7 +39,14 @@ public class User implements UserDetails {
     private String profilePictureUrl;
 
     @Column(nullable = false)
-    private String userRole; // Aquí se guarda "ROLE_ADMIN", "ROLE_USER", etc.
+    private String userRole; // "ROLE_ADMIN", "ROLE_USER", etc.
+
+    // --- NUEVO CAMPO PARA EL SISTEMA DE BANEO ---
+    // 'false' significa que la cuenta está activa (no bloqueada)
+    // 'true' significa que el usuario está baneado
+    @Column(columnDefinition = "BOOLEAN DEFAULT false")
+    private boolean locked = false;
+    // --------------------------------------------
 
     private int pointsBalance;
 
@@ -51,14 +59,13 @@ public class User implements UserDetails {
     @JsonIgnore
     private Cart cart;
 
-    // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+    // --- IMPLEMENTACIÓN DE USERDETAILS ---
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Usamos el valor real de la variable 'userRole'
-        // Esto permite que Spring Security reconozca si eres ADMIN o DUOC
+        // Convierte el String userRole en una Autoridad real de Spring Security
         return Collections.singletonList(new SimpleGrantedAuthority(this.userRole));
     }
-    // ---------------------------------
 
     @Override
     public String getPassword() {
@@ -75,10 +82,15 @@ public class User implements UserDetails {
         return true;
     }
 
+    // --- AQUÍ ESTÁ EL CAMBIO CLAVE PARA EL LOGIN ---
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        // Spring pregunta: "¿La cuenta NO está bloqueada?"
+        // Si locked es false (usuario normal) -> devolvemos true (Acceso permitido)
+        // Si locked es true (baneado) -> devolvemos false (Acceso denegado)
+        return !this.locked;
     }
+    // -----------------------------------------------
 
     @Override
     public boolean isCredentialsNonExpired() {

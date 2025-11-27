@@ -2,7 +2,9 @@ package com.LevelUpGamer.proyecto.controller;
 
 import com.LevelUpGamer.proyecto.Repository.OrderRepository;
 import com.LevelUpGamer.proyecto.Repository.ReviewRepository;
+import com.LevelUpGamer.proyecto.Repository.UserRepository; // <--- NUEVO IMPORT
 import com.LevelUpGamer.proyecto.model.Order;
+import com.LevelUpGamer.proyecto.model.User; // <--- NUEVO IMPORT
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
-@Tag(name = "Panel de Administrador", description = "Estadísticas de ventas y moderación.")
+@Tag(name = "Panel de Administrador", description = "Estadísticas, moderación y gestión de usuarios.")
 public class AdminDashboardController {
 
     @Autowired
@@ -27,10 +29,13 @@ public class AdminDashboardController {
     @Autowired
     private ReviewRepository reviewRepository;
 
+    @Autowired
+    private UserRepository userRepository; // <--- INYECCIÓN NUEVA PARA GESTIONAR USUARIOS
+
     /**
      * Devuelve las estadísticas de ventas (Hoy, Esta Semana, Este Mes, Este Año).
      */
-    @Operation(summary = "Estadísticas de ventas", description = "Devuelve ingresos totales y cantidad de pedidos por períodos de tiempo.")
+    @Operation(summary = "Estadísticas de ventas", description = "Devuelve ingresos totales y cantidad de pedidos.")
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getSalesStats() {
         LocalDateTime now = LocalDateTime.now();
@@ -43,30 +48,62 @@ public class AdminDashboardController {
 
         Map<String, Object> stats = new HashMap<>();
 
-        // Ventas de HOY
+        // Ventas y Pedidos
         stats.put("salesToday", orderRepository.sumTotalSalesBetween(startOfDay, now));
         stats.put("ordersToday", orderRepository.countOrdersBetween(startOfDay, now));
-
-        // Ventas de la SEMANA
         stats.put("salesWeek", orderRepository.sumTotalSalesBetween(startOfWeek, now));
-
-        // Ventas del MES
         stats.put("salesMonth", orderRepository.sumTotalSalesBetween(startOfMonth, now));
-
-        // Ventas del AÑO
         stats.put("salesYear", orderRepository.sumTotalSalesBetween(startOfYear, now));
 
-        // Últimos 10 pedidos (para tabla rápida)
+        // Últimos 10 pedidos
         List<Order> recentOrders = orderRepository.findTop10ByOrderByOrderDateDesc();
         stats.put("recentOrders", recentOrders);
 
         return ResponseEntity.ok(stats);
     }
 
+    // --- NUEVA SECCIÓN: GESTIÓN DE USUARIOS ---
+
+    /**
+     * Obtener todos los usuarios registrados.
+     * RUTA: GET /api/admin/users
+     */
+    @Operation(summary = "Listar usuarios", description = "Obtiene la lista de todos los usuarios registrados.")
+    @GetMapping("/users")
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    /**
+     * Banear o Desbanear a un usuario.
+     * RUTA: PUT /api/admin/users/{id}/ban
+     */
+    @Operation(summary = "Banear/Desbanear", description = "Invierte el estado de bloqueo del usuario.")
+    @PutMapping("/users/{id}/ban")
+    public ResponseEntity<?> toggleUserBan(@PathVariable Long id) {
+        return userRepository.findById(id).map(user -> {
+            // Protección: No permitir que un Admin se banee a sí mismo o a otro Admin
+            if (user.getUserRole().equals("ROLE_ADMIN")) {
+                return ResponseEntity.badRequest().body("No puedes banear a un administrador.");
+            }
+
+            // Invertir el estado (Si era false pasa a true, y viceversa)
+            boolean currentState = user.isLocked();
+            user.setLocked(!currentState);
+
+            userRepository.save(user);
+
+            String status = user.isLocked() ? "baneado" : "desbaneado";
+            return ResponseEntity.ok("Usuario " + status + " exitosamente.");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // ------------------------------------------
+
     /**
      * Moderación: Eliminar un comentario inadecuado.
      */
-    @Operation(summary = "Eliminar comentario", description = "Permite a un admin borrar una reseña ofensiva o spam.")
+    @Operation(summary = "Eliminar comentario", description = "Borrar una reseña ofensiva o spam.")
     @DeleteMapping("/reviews/{reviewId}")
     public ResponseEntity<?> deleteReview(@PathVariable Long reviewId) {
         if (reviewRepository.existsById(reviewId)) {

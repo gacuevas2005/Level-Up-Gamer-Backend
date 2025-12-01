@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 
 @Service
 public class OrderService {
@@ -22,11 +21,6 @@ public class OrderService {
     @Autowired
     private CartRepository cartRepository;
 
-    /**
-     * El método principal de Checkout.
-     * Es "Transaccional": si algo falla (ej. al guardar el pedido),
-     * no se guardarán los cambios en el usuario (puntos) ni se borrará el carrito.
-     */
     @Transactional
     public Order createOrderFromCart(String username) {
 
@@ -45,7 +39,7 @@ public class OrderService {
         double finalPrice = originalPrice;
         int pointsEarned = 0;
 
-        // 3. APLICAR LÓGICA DE DUOC (¡TU REGLA DE NEGOCIO!)
+        // 3. APLICAR LÓGICA DE DUOC
         if (user.getUserRole() != null && user.getUserRole().equals("ROLE_DUOC")) {
             finalPrice = originalPrice * 0.80;
 
@@ -57,7 +51,7 @@ public class OrderService {
             updateUserLevel(user);
         }
 
-        // 4. CREAR EL PEDIDO (LA "FACTURA")
+        // 4. CREAR EL PEDIDO
         Order newOrder = new Order();
         newOrder.setUser(user);
         newOrder.setOriginalPrice(originalPrice);

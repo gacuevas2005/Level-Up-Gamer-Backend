@@ -13,10 +13,8 @@ public class ProfileResponse {
     private String userRole;
     private int pointsBalance;
     private int userLevel;
-    private int totalPointsEarned; // Total para la barra de progreso
+    private int totalPointsEarned;
 
-    // Creamos un constructor que "mapea"
-    // un User a un ProfileResponse, quitando la data sensible.
     public ProfileResponse(User user) {
         this.id = user.getId();
         this.username = user.getUsername();

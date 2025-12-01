@@ -41,7 +41,6 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String userRole; // "ROLE_ADMIN", "ROLE_USER", etc.
 
-    // --- NUEVO CAMPO PARA EL SISTEMA DE BANEO ---
     // 'false' significa que la cuenta está activa (no bloqueada)
     // 'true' significa que el usuario está baneado
     @Column(columnDefinition = "BOOLEAN DEFAULT false")
@@ -59,12 +58,10 @@ public class User implements UserDetails {
     @JsonIgnore
     private Cart cart;
 
-    // --- IMPLEMENTACIÓN DE USERDETAILS ---
 
     @Override
     @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Convierte el String userRole en una Autoridad real de Spring Security
         return Collections.singletonList(new SimpleGrantedAuthority(this.userRole));
     }
 
@@ -83,12 +80,8 @@ public class User implements UserDetails {
         return true;
     }
 
-    // --- AQUÍ ESTÁ EL CAMBIO CLAVE PARA EL LOGIN ---
     @Override
     public boolean isAccountNonLocked() {
-        // Spring pregunta: "¿La cuenta NO está bloqueada?"
-        // Si locked es false (usuario normal) -> devolvemos true (Acceso permitido)
-        // Si locked es true (baneado) -> devolvemos false (Acceso denegado)
         return !this.locked;
     }
     // -----------------------------------------------

@@ -15,7 +15,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             "WHERE o.user.id = :userId")
     List<Order> findByUserIdWithItems(@Param("userId") Long userId);
 
-    // --- NUEVAS CONSULTAS PARA EL DASHBOARD DE ADMIN ---
 
     // Suma total de ventas (dinero) en un rango de fechas
     @Query("SELECT COALESCE(SUM(o.finalPrice), 0) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate")

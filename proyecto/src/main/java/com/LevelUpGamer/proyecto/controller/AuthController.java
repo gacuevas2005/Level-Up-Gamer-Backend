@@ -4,7 +4,7 @@ import com.LevelUpGamer.proyecto.Repository.CartRepository;
 import com.LevelUpGamer.proyecto.Repository.UserRepository;
 import com.LevelUpGamer.proyecto.dto.AuthResponse;
 import com.LevelUpGamer.proyecto.dto.LoginRequest;
-import com.LevelUpGamer.proyecto.dto.RegisterRequest; // <-- IMPORTANTE
+import com.LevelUpGamer.proyecto.dto.RegisterRequest;
 import com.LevelUpGamer.proyecto.model.Cart;
 import com.LevelUpGamer.proyecto.model.User;
 import com.LevelUpGamer.proyecto.service.JwtService;
@@ -43,7 +43,6 @@ public class AuthController {
 
     /**
      * Endpoint para registrar un nuevo usuario.
-     * AHORA USA RegisterRequest PARA RECIBIR LA CONTRASEÑA CORRECTAMENTE
      */
     @Operation(
             summary = "Registrar un nuevo usuario",
@@ -54,7 +53,7 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "El nombre de usuario o el correo electrónico ya están en uso")
     })
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest request) { // <-- Usamos el DTO
+    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest request) {
 
         // 1. Validaciones previas usando los datos del request
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
@@ -70,10 +69,9 @@ public class AuthController {
         newUser.setEmail(request.getEmail());
         newUser.setDateOfBirth(request.getDateOfBirth());
 
-        // 3. Encriptar contraseña (AHORA SÍ FUNCIONARÁ PORQUE request.getPassword() NO ES NULL)
+        // 3. Encriptar contraseña
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        // --- LÓGICA DE ASIGNACIÓN DE DATOS ---
         System.out.println("Iniciando registro para: " + newUser.getEmail());
 
         // A. Asignar Rol

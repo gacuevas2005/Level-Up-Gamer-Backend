@@ -1,14 +1,10 @@
 package com.LevelUpGamer.proyecto.controller;
 
-// DTOs
 import com.LevelUpGamer.proyecto.dto.ChangePasswordRequest;
 import com.LevelUpGamer.proyecto.dto.ProfileResponse;
-// Modelo y Repositorio
 import com.LevelUpGamer.proyecto.model.User;
 import com.LevelUpGamer.proyecto.Repository.UserRepository;
-// Servicios
 import com.LevelUpGamer.proyecto.service.FileStorageService;
-// Swagger Imports
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,9 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-// Utilidad
 import org.apache.commons.io.FilenameUtils;
-// Spring Imports
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -98,7 +92,7 @@ public class ProfileController {
     }
 
     /**
-     * Sube la FOTO de perfil.
+     * Sube la foto de perfil.
      */
     @Operation(summary = "Subir foto de perfil", description = "Sube una imagen (jpg, png), la guarda en el servidor y actualiza la URL del perfil.")
     @ApiResponses(value = {

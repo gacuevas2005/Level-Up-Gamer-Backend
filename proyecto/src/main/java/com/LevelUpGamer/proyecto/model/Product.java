@@ -1,6 +1,6 @@
 package com.LevelUpGamer.proyecto.model;
-import jakarta.persistence.*; // Asegúrate de usar jakarta si es Spring Boot 3+
-import lombok.Data; // Lombok para ahorrarnos getters/setters
+import jakarta.persistence.*;
+import lombok.Data;
 import java.util.List;
 import java.util.ArrayList;
 

@@ -13,14 +13,12 @@ public class CartItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // El carrito al que pertenece (Muchos items pertenecen a Un carrito)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id")
     @JsonIgnore // Evita bucles
     private Cart cart;
 
-    // El producto que se está comprando (Muchos items pueden ser el Mismo producto)
-    @ManyToOne(fetch = FetchType.EAGER) // Queremos ver la info del producto
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "product_id")
     private Product product;
 

@@ -10,7 +10,7 @@ import java.util.List;
 @Data
 @Entity
 @Table(name = "orders")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})// "order" es una palabra reservada en SQL
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Order {
 
     @Id

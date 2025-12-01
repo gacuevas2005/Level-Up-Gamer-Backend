@@ -4,15 +4,13 @@ import com.LevelUpGamer.proyecto.model.Product;
 import com.LevelUpGamer.proyecto.model.Review;
 import com.LevelUpGamer.proyecto.Repository.ProductRepository;
 import com.LevelUpGamer.proyecto.Repository.ReviewRepository;
-import com.LevelUpGamer.proyecto.service.FileStorageService; // Usamos tu servicio de archivos
+import com.LevelUpGamer.proyecto.service.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.apache.commons.io.FilenameUtils; // Necesario para extensiones
+import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +18,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/products")
@@ -36,8 +33,6 @@ public class ProductController {
     @Autowired
     private FileStorageService fileStorageService;
 
-    // --- PÚBLICO: VER PRODUCTOS ---
-
     @GetMapping
     public List<Product> getAllProducts() {
         return productRepository.findAll();
@@ -49,8 +44,6 @@ public class ProductController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-
-    // --- ADMIN: CREAR PRODUCTO CON IMAGEN ---
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createProduct(
@@ -69,16 +62,15 @@ public class ProductController {
             newProduct.setCategory(category);
             newProduct.setDescription(description);
             newProduct.setManufacturer(manufacturer);
-            newProduct.setDistributor(distributor); // <-- AGREGADO
+            newProduct.setDistributor(distributor);
 
-            // Guardar Imagen solo si existe
             if (imageFile != null && !imageFile.isEmpty()) {
                 String extension = FilenameUtils.getExtension(imageFile.getOriginalFilename());
                 String filename = "prod_" + System.currentTimeMillis() + "." + extension;
                 fileStorageService.store(imageFile, filename);
                 newProduct.setImageUrl("http://localhost:8081/uploads/" + filename);
             } else {
-                newProduct.setImageUrl("http://localhost:8081/uploads/default.png"); // Imagen por defecto opcional
+                newProduct.setImageUrl("http://localhost:8081/uploads/default.png");
             }
 
             return ResponseEntity.ok(productRepository.save(newProduct));
@@ -87,7 +79,6 @@ public class ProductController {
         }
     }
 
-    // --- ADMIN: ACTUALIZAR PRODUCTO ---
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateProduct(
             @PathVariable Long id,
@@ -95,8 +86,8 @@ public class ProductController {
             @RequestParam("price") Double price,
             @RequestParam("category") String category,
             @RequestParam("description") String description,
-            @RequestParam(value = "manufacturer", required = false) String manufacturer, // <-- AGREGADO
-            @RequestParam(value = "distributor", required = false) String distributor,   // <-- AGREGADO
+            @RequestParam(value = "manufacturer", required = false) String manufacturer,
+            @RequestParam(value = "distributor", required = false) String distributor,
             @RequestParam(value = "image", required = false) MultipartFile imageFile
     ) {
         return productRepository.findById(id).map(product -> {
@@ -105,8 +96,8 @@ public class ProductController {
                 product.setPrice(price);
                 product.setCategory(category);
                 product.setDescription(description);
-                product.setManufacturer(manufacturer); // <-- AGREGADO
-                product.setDistributor(distributor);   // <-- AGREGADO
+                product.setManufacturer(manufacturer);
+                product.setDistributor(distributor);
 
                 if (imageFile != null && !imageFile.isEmpty()) {
                     String extension = FilenameUtils.getExtension(imageFile.getOriginalFilename());
@@ -122,8 +113,6 @@ public class ProductController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // --- ADMIN: ELIMINAR PRODUCTO ---
-
     @Operation(summary = "Eliminar producto (Admin)", description = "Elimina un producto de la base de datos.")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
@@ -133,8 +122,6 @@ public class ProductController {
         productRepository.deleteById(id);
         return ResponseEntity.ok("Producto eliminado correctamente");
     }
-
-    // --- USUARIO: AÑADIR RESEÑA ---
 
     @PostMapping("/{productId}/reviews")
     public ResponseEntity<Review> addReviewToProduct(

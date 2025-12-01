@@ -1,7 +1,7 @@
 package com.LevelUpGamer.proyecto.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty; // <-- ¡NUEVA IMPORTACIÓN!
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.util.List;
@@ -25,20 +25,12 @@ public class Cart {
             mappedBy = "cart",
             cascade = CascadeType.ALL,
             fetch = FetchType.EAGER,
-            orphanRemoval = true // <-- ¡AÑADE ESTA LÍNEA!
+            orphanRemoval = true
     )
     @JsonProperty("items")
     private List<CartItem> cartItems = new ArrayList<>();
 
-
-    // --- ¡NUEVO MÉTODO! ---
-    /**
-     * Este método no es un campo en la BD (es "transient" por naturaleza).
-     * El conversor de JSON (Jackson) lo ejecutará automáticamente
-     * y añadirá un campo "totalPrice" al JSON que se envía al frontend.
-     * @return El precio total calculado de todos los items en el carrito.
-     */
-    @JsonProperty("total") // <-- ¡CAMBIO AQUÍ!
+    @JsonProperty("total")
     public Double getTotalPrice() {
         if (this.cartItems == null || this.cartItems.isEmpty()) {
             return 0.0;
@@ -46,7 +38,6 @@ public class Cart {
 
         double total = 0.0;
         for (CartItem item : this.cartItems) {
-            // Nos aseguramos de que el producto y el precio no sean nulos
             if (item.getProduct() != null && item.getProduct().getPrice() != null) {
                 total += item.getProduct().getPrice() * item.getQuantity();
             }

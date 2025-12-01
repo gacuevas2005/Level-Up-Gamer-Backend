@@ -84,7 +84,6 @@ public class RewardsController {
 
         // 4. ¡Éxito! Realiza el canje
         user.setPointsBalance(user.getPointsBalance() - requiredCost);
-        // No tocamos 'totalPointsEarned' (el nivel se mantiene)
 
         userRepository.save(user);
 

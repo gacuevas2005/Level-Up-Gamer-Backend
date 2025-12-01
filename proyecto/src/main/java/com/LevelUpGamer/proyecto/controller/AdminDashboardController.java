@@ -2,9 +2,9 @@ package com.LevelUpGamer.proyecto.controller;
 
 import com.LevelUpGamer.proyecto.Repository.OrderRepository;
 import com.LevelUpGamer.proyecto.Repository.ReviewRepository;
-import com.LevelUpGamer.proyecto.Repository.UserRepository; // <--- NUEVO IMPORT
+import com.LevelUpGamer.proyecto.Repository.UserRepository;
 import com.LevelUpGamer.proyecto.model.Order;
-import com.LevelUpGamer.proyecto.model.User; // <--- NUEVO IMPORT
+import com.LevelUpGamer.proyecto.model.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ public class AdminDashboardController {
     private ReviewRepository reviewRepository;
 
     @Autowired
-    private UserRepository userRepository; // <--- INYECCIÓN NUEVA PARA GESTIONAR USUARIOS
+    private UserRepository userRepository;
 
     /**
      * Devuelve las estadísticas de ventas (Hoy, Esta Semana, Este Mes, Este Año).
@@ -62,8 +62,6 @@ public class AdminDashboardController {
         return ResponseEntity.ok(stats);
     }
 
-    // --- NUEVA SECCIÓN: GESTIÓN DE USUARIOS ---
-
     /**
      * Obtener todos los usuarios registrados.
      * RUTA: GET /api/admin/users
@@ -82,12 +80,9 @@ public class AdminDashboardController {
     @PutMapping("/users/{id}/ban")
     public ResponseEntity<?> toggleUserBan(@PathVariable Long id) {
         return userRepository.findById(id).map(user -> {
-            // Protección: No permitir que un Admin se banee a sí mismo o a otro Admin
             if (user.getUserRole().equals("ROLE_ADMIN")) {
                 return ResponseEntity.badRequest().body("No puedes banear a un administrador.");
             }
-
-            // Invertir el estado (Si era false pasa a true, y viceversa)
             boolean currentState = user.isLocked();
             user.setLocked(!currentState);
 
@@ -97,8 +92,6 @@ public class AdminDashboardController {
             return ResponseEntity.ok("Usuario " + status + " exitosamente.");
         }).orElse(ResponseEntity.notFound().build());
     }
-
-    // ------------------------------------------
 
     /**
      * Moderación: Eliminar un comentario inadecuado.

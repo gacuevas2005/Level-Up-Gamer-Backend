@@ -40,7 +40,7 @@ public class OrderController {
     }
 
     /**
-     * ¡NUEVO! Obtener historial de boletas del usuario logueado
+     * Obtener historial de boletas del usuario logueado
      * GET http://localhost:8081/api/orders/my-orders
      */
     @GetMapping("/my-orders")

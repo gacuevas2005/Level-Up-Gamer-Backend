@@ -30,18 +30,17 @@ public class JwtService {
     }
 
     public String generateToken(UserDetails userDetails) {
-        // 1. Extraer los roles del usuario y convertirlos a una lista de Strings
+        // Extraer los roles del usuario y convertirlos a una lista de Strings
         List<String> roles = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
-        // 2. Crear un mapa para los claims (opcional, pero ordenado)
         Map<String, Object> claims = new HashMap<>();
-        claims.put("roles", roles); // Guardamos la lista bajo la clave "roles"
+        claims.put("roles", roles);
 
-        // 3. Construir el token inyectando los claims
+        // Construir el token inyectando los claims
         return Jwts.builder()
-                .setClaims(claims) // <--- Aquí inyectamos los roles
+                .setClaims(claims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))

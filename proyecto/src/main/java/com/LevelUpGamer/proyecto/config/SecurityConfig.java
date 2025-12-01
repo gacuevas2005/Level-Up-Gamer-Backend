@@ -17,7 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import java.util.Arrays; // No olvides importar esto
+import java.util.Arrays;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -61,7 +61,7 @@ public class SecurityConfig {
         // 2. Métodos permitidos
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        // 3. Headers permitidos (¡CRUCIAL PARA EL TOKEN!)
+        // 3. Headers permitidos
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
 
         // 4. Permitir credenciales (cookies, etc)
@@ -89,15 +89,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
-                        // --- RUTAS DE ADMINISTRADOR (CAMBIOS AQUÍ) ---
-                        // Usamos hasAuthority para coincidir EXACTAMENTE con lo que viene en el Token
+                        // --- RUTAS DE ADMINISTRADOR ---
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/products").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").hasAuthority("ROLE_ADMIN")
 
-                        // --- RUTAS DE USUARIO AUTENTICADO ---
                         .anyRequest().authenticated()
                 );
 

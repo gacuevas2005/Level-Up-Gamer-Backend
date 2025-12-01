@@ -27,27 +27,22 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // 1. Verificamos si ya existe el usuario 'admin' para no duplicarlo
         if (userRepository.findByUsername("admin").isEmpty()) {
 
             User admin = new User();
             admin.setUsername("admin");
             admin.setEmail("admin@levelupgamer.com");
-            // ¡IMPORTANTE! Aquí se encripta la contraseña
             admin.setPassword(passwordEncoder.encode("admin123"));
-            admin.setUserRole("ROLE_ADMIN"); // Este es el rol clave para entrar al dashboard
+            admin.setUserRole("ROLE_ADMIN");
 
-            // Datos de relleno requeridos por tu modelo
             admin.setPointsBalance(100000);
-            admin.setUserLevel(4); // Nivel máximo
+            admin.setUserLevel(4);
             admin.setTotalPointsEarned(100000);
             admin.setReceiveNotifications(true);
             admin.setProfilePictureUrl("https://ui-avatars.com/api/?name=Admin+User&background=0D8ABC&color=fff");
 
-            // Guardamos el admin
             User savedAdmin = userRepository.save(admin);
 
-            // IMPORTANTE: Crear un carrito para el admin (para evitar NullPointerException si intenta comprar)
             Cart adminCart = new Cart();
             adminCart.setUser(savedAdmin);
             cartRepository.save(adminCart);

@@ -54,8 +54,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // 1. Permitir el origen de tu Frontend (React)
-        // Si usas Vite es 5173, si usas Create-React-App es 3000.
-        // Pon ambos por si acaso o usa "*" para desarrollo (no recomendado en producción)
+        // Vite es 5173, Create-React-App es 3000.
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000"));
 
         // 2. Métodos permitidos

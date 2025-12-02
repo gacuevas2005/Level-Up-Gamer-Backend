@@ -15,7 +15,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * Configuración de CORS.
-     * Le dice a Spring que acepte peticiones desde tu app de React.
+     * Le dice a Spring que acepte peticiones desde nuestra app de React.
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {

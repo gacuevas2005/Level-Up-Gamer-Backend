@@ -88,6 +88,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
+                        // 1. Permite consultar la versión
+                        .requestMatchers("/api/version/**").permitAll()
+                        // 2. Permite descargar el APK (si está en la raíz de static)
+                        .requestMatchers("/app-release.apk").permitAll()
+                        // 3. Permite recursos estáticos generales
+                        .requestMatchers("/static/**").permitAll()
+
                         // --- RUTAS DE ADMINISTRADOR ---
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/products").hasAuthority("ROLE_ADMIN")

@@ -14,8 +14,8 @@ public class VersionController {
     public Map<String, Object> getLatestVersion() {
         // Cada vez que subas una app nueva, cambia este número manualmente aquí
         return Map.of(
-                "versionCode", 2,
-                "url", "/app-release.apk" // Spring Boot sirve static files en la raíz por defecto
+                "versionCode", 7,
+                "url", "/app-release.apk"
         );
     }
 }
